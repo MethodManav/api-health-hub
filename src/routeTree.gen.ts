@@ -9,38 +9,164 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TestsRouteImport } from './routes/tests'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ApisRouteImport } from './routes/apis'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApisIndexRouteImport } from './routes/apis.index'
+import { Route as ApisApiIdRouteImport } from './routes/apis.$apiId'
 
+const TestsRoute = TestsRouteImport.update({
+  id: '/tests',
+  path: '/tests',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApisRoute = ApisRouteImport.update({
+  id: '/apis',
+  path: '/apis',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApisIndexRoute = ApisIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ApisRoute,
+} as any)
+const ApisApiIdRoute = ApisApiIdRouteImport.update({
+  id: '/$apiId',
+  path: '/$apiId',
+  getParentRoute: () => ApisRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/apis': typeof ApisRouteWithChildren
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
+  '/tests': typeof TestsRoute
+  '/apis/$apiId': typeof ApisApiIdRoute
+  '/apis/': typeof ApisIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
+  '/tests': typeof TestsRoute
+  '/apis/$apiId': typeof ApisApiIdRoute
+  '/apis': typeof ApisIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/apis': typeof ApisRouteWithChildren
+  '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
+  '/tests': typeof TestsRoute
+  '/apis/$apiId': typeof ApisApiIdRoute
+  '/apis/': typeof ApisIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/apis'
+    | '/dashboard'
+    | '/login'
+    | '/settings'
+    | '/tests'
+    | '/apis/$apiId'
+    | '/apis/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/settings'
+    | '/tests'
+    | '/apis/$apiId'
+    | '/apis'
+  id:
+    | '__root__'
+    | '/'
+    | '/apis'
+    | '/dashboard'
+    | '/login'
+    | '/settings'
+    | '/tests'
+    | '/apis/$apiId'
+    | '/apis/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApisRoute: typeof ApisRouteWithChildren
+  DashboardRoute: typeof DashboardRoute
+  LoginRoute: typeof LoginRoute
+  SettingsRoute: typeof SettingsRoute
+  TestsRoute: typeof TestsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tests': {
+      id: '/tests'
+      path: '/tests'
+      fullPath: '/tests'
+      preLoaderRoute: typeof TestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apis': {
+      id: '/apis'
+      path: '/apis'
+      fullPath: '/apis'
+      preLoaderRoute: typeof ApisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,12 +174,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/apis/': {
+      id: '/apis/'
+      path: '/'
+      fullPath: '/apis/'
+      preLoaderRoute: typeof ApisIndexRouteImport
+      parentRoute: typeof ApisRoute
+    }
+    '/apis/$apiId': {
+      id: '/apis/$apiId'
+      path: '/$apiId'
+      fullPath: '/apis/$apiId'
+      preLoaderRoute: typeof ApisApiIdRouteImport
+      parentRoute: typeof ApisRoute
+    }
   }
 }
 
+interface ApisRouteChildren {
+  ApisApiIdRoute: typeof ApisApiIdRoute
+  ApisIndexRoute: typeof ApisIndexRoute
+}
+
+const ApisRouteChildren: ApisRouteChildren = {
+  ApisApiIdRoute: ApisApiIdRoute,
+  ApisIndexRoute: ApisIndexRoute,
+}
+
+const ApisRouteWithChildren = ApisRoute._addFileChildren(ApisRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApisRoute: ApisRouteWithChildren,
+  DashboardRoute: DashboardRoute,
+  LoginRoute: LoginRoute,
+  SettingsRoute: SettingsRoute,
+  TestsRoute: TestsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
