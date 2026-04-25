@@ -10,6 +10,14 @@ import {
   type HttpMethod,
 } from "@/lib/mock-data";
 
+export type EnvVariable = { key: string; value: string; secret?: boolean };
+export type Environment = {
+  id: string;
+  name: string;
+  color: string;
+  variables: EnvVariable[];
+};
+
 type WorkspaceState = {
   workspaces: Workspace[];
   currentWorkspaceId: string;
@@ -27,6 +35,15 @@ type WorkspaceState = {
   updateApi: (id: string, patch: Partial<ApiEndpoint>) => void;
   deleteApi: (id: string) => void;
 
+  // Environments
+  environments: Environment[];
+  activeEnvironmentId: string | null;
+  setActiveEnvironment: (id: string | null) => void;
+  addEnvironment: (name: string) => Environment;
+  renameEnvironment: (id: string, name: string) => void;
+  deleteEnvironment: (id: string) => void;
+  setEnvironmentVariables: (id: string, vars: EnvVariable[]) => void;
+
   user: { name: string; email: string } | null;
   setUser: (u: { name: string; email: string } | null) => void;
 };
@@ -37,6 +54,29 @@ const palette = [
   "oklch(0.7 0.18 300)",
   "oklch(0.7 0.15 240)",
   "oklch(0.74 0.18 155)",
+];
+
+const defaultEnvironments: Environment[] = [
+  {
+    id: "env-prod",
+    name: "Production",
+    color: "oklch(0.82 0.18 175)",
+    variables: [
+      { key: "baseUrl", value: "https://jsonplaceholder.typicode.com" },
+      { key: "apiVersion", value: "v1" },
+      { key: "token", value: "prod-xyz-secret", secret: true },
+    ],
+  },
+  {
+    id: "env-dev",
+    name: "Development",
+    color: "oklch(0.78 0.16 75)",
+    variables: [
+      { key: "baseUrl", value: "https://jsonplaceholder.typicode.com" },
+      { key: "apiVersion", value: "v1" },
+      { key: "token", value: "dev-abc-token", secret: true },
+    ],
+  },
 ];
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -64,7 +104,6 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       deleteFolder: (id) =>
         set({
           folders: get().folders.filter((f) => f.id !== id),
-          // orphan APIs go to root
           apis: get().apis.map((a) => (a.folderId === id ? { ...a, folderId: null } : a)),
         }),
 
@@ -86,17 +125,60 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         set({ apis: get().apis.map((a) => (a.id === id ? { ...a, ...patch } : a)) }),
       deleteApi: (id) => set({ apis: get().apis.filter((a) => a.id !== id) }),
 
+      environments: defaultEnvironments,
+      activeEnvironmentId: "env-prod",
+      setActiveEnvironment: (id) => set({ activeEnvironmentId: id }),
+      addEnvironment: (name) => {
+        const env: Environment = {
+          id: `env-${Date.now()}`,
+          name,
+          color: palette[get().environments.length % palette.length],
+          variables: [{ key: "baseUrl", value: "https://api.example.com" }],
+        };
+        set({ environments: [...get().environments, env], activeEnvironmentId: env.id });
+        return env;
+      },
+      renameEnvironment: (id, name) =>
+        set({ environments: get().environments.map((e) => (e.id === id ? { ...e, name } : e)) }),
+      deleteEnvironment: (id) =>
+        set({
+          environments: get().environments.filter((e) => e.id !== id),
+          activeEnvironmentId: get().activeEnvironmentId === id ? null : get().activeEnvironmentId,
+        }),
+      setEnvironmentVariables: (id, vars) =>
+        set({ environments: get().environments.map((e) => (e.id === id ? { ...e, variables: vars } : e)) }),
+
       user: { name: "Alex Chen", email: "alex@devpulse.io" },
       setUser: (user) => set({ user }),
     }),
     {
       name: "devpulse-workspace",
+      version: 2,
       partialize: (s) => ({
         workspaces: s.workspaces,
         currentWorkspaceId: s.currentWorkspaceId,
         folders: s.folders,
         apis: s.apis,
+        environments: s.environments,
+        activeEnvironmentId: s.activeEnvironmentId,
       }),
     },
   ),
 );
+
+/** Replace {{var}} placeholders with active environment values. */
+export function interpolateEnv(input: string, vars: EnvVariable[]): string {
+  return input.replace(/\{\{\s*([\w-]+)\s*\}\}/g, (_, k) => {
+    const v = vars.find((x) => x.key === k);
+    return v ? v.value : `{{${k}}}`;
+  });
+}
+
+/** Returns array of variable references found in a string. */
+export function extractVarRefs(input: string): string[] {
+  const out: string[] = [];
+  const re = /\{\{\s*([\w-]+)\s*\}\}/g;
+  let m;
+  while ((m = re.exec(input))) out.push(m[1]);
+  return out;
+}
