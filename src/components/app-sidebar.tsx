@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { Activity, FolderTree, FlaskConical, Settings, ChevronDown, Plus, MoreVertical, Pencil, Trash2, FolderPlus } from "lucide-react";
+import { Activity, FolderTree, FlaskConical, Settings, ChevronDown, Plus, MoreVertical, Pencil, Trash2, FolderPlus, Globe } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import { MethodBadge } from "./method-badge";
@@ -43,9 +43,10 @@ export function AppSidebar() {
     });
   };
 
-  const navItems = [
+    const navItems = [
     { to: "/dashboard", label: "Dashboard", icon: Activity },
     { to: "/apis", label: "APIs", icon: FolderTree },
+    { to: "/environments", label: "Environments", icon: Globe },
     { to: "/tests", label: "Tests", icon: FlaskConical },
     { to: "/settings", label: "Settings", icon: Settings },
   ];
