@@ -15,6 +15,7 @@ const tests = [
 
 function TestsPage() {
   return (
+    <DashboardLayout>
     <div className="p-8 max-w-[1400px] mx-auto">
       <header className="mb-6 flex items-center justify-between">
         <div>
