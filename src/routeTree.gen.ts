@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TestsRouteImport } from './routes/tests'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as EnvironmentsRouteImport } from './routes/environments'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ApisRouteImport } from './routes/apis'
 import { Route as IndexRouteImport } from './routes/index'
@@ -31,6 +32,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnvironmentsRoute = EnvironmentsRouteImport.update({
+  id: '/environments',
+  path: '/environments',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/apis': typeof ApisRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/environments': typeof EnvironmentsRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/tests': typeof TestsRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/environments': typeof EnvironmentsRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/tests': typeof TestsRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/apis': typeof ApisRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/environments': typeof EnvironmentsRoute
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/tests': typeof TestsRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apis'
     | '/dashboard'
+    | '/environments'
     | '/login'
     | '/settings'
     | '/tests'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard'
+    | '/environments'
     | '/login'
     | '/settings'
     | '/tests'
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
     | '/'
     | '/apis'
     | '/dashboard'
+    | '/environments'
     | '/login'
     | '/settings'
     | '/tests'
@@ -125,6 +137,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApisRoute: typeof ApisRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  EnvironmentsRoute: typeof EnvironmentsRoute
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
   TestsRoute: typeof TestsRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/environments': {
+      id: '/environments'
+      path: '/environments'
+      fullPath: '/environments'
+      preLoaderRoute: typeof EnvironmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -207,6 +227,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApisRoute: ApisRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  EnvironmentsRoute: EnvironmentsRoute,
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
   TestsRoute: TestsRoute,
