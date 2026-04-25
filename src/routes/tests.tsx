@@ -49,5 +49,6 @@ function TestsPage() {
         Drag an API from the sidebar to create a new test.
       </div>
     </div>
+    </DashboardLayout>
   );
 }
