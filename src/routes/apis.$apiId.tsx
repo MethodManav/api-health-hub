@@ -1,17 +1,13 @@
-import { createFileRoute, notFound } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { apis, type HttpMethod } from "@/lib/mock-data";
+import { useWorkspaceStore } from "@/store/workspace-store";
+import { type HttpMethod } from "@/lib/mock-data";
 import { MethodBadge } from "@/components/method-badge";
 import { StatusDot } from "@/components/status-dot";
 import { Send, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/apis/$apiId")({
-  loader: ({ params }) => {
-    const api = apis.find((a) => a.id === params.apiId);
-    if (!api) throw notFound();
-    return api;
-  },
   component: ApiEditor,
   notFoundComponent: () => <div className="p-8">API not found</div>,
 });
@@ -20,7 +16,22 @@ const METHODS: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH"];
 const TABS = ["Params", "Headers", "Body", "Auth"] as const;
 
 function ApiEditor() {
-  const api = Route.useLoaderData();
+  const { apiId } = Route.useParams();
+  const api = useWorkspaceStore((s) => s.apis.find((a) => a.id === apiId));
+
+  if (!api) {
+    return (
+      <div className="p-8">
+        <h2 className="text-xl font-semibold">Endpoint not found</h2>
+        <p className="text-sm text-muted-foreground mt-1">It may have been deleted.</p>
+      </div>
+    );
+  }
+
+  return <ApiEditorInner key={api.id} api={api} />;
+}
+
+function ApiEditorInner({ api }: { api: NonNullable<ReturnType<typeof useWorkspaceStore.getState>["apis"][number]> }) {
   const [method, setMethod] = useState<HttpMethod>(api.method);
   const [url, setUrl] = useState(api.endpoint);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Headers");
