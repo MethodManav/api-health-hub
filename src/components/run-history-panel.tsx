@@ -1,6 +1,7 @@
+import { useMemo, useState } from "react";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import type { RunHistoryEntry } from "@/lib/mock-data";
-import { Clock, Trash2, Inbox } from "lucide-react";
+import { Clock, Trash2, Inbox, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fmtTime = (ts: number) => {
@@ -21,12 +22,68 @@ const statusClass = (s: number, error?: string) =>
         ? "bg-info/15 text-info"
         : "bg-destructive/15 text-destructive";
 
+type StatusFilter = "all" | "success" | "redirect" | "client" | "server" | "error";
+
+const STATUS_FILTERS: { id: StatusFilter; label: string; hint: string }[] = [
+  { id: "all", label: "All", hint: "Show every run" },
+  { id: "success", label: "2xx", hint: "Successful (200–299)" },
+  { id: "redirect", label: "3xx", hint: "Redirects (300–399)" },
+  { id: "client", label: "4xx", hint: "Client errors (400–499)" },
+  { id: "server", label: "5xx", hint: "Server errors (500–599)" },
+  { id: "error", label: "ERR", hint: "Network errors" },
+];
+
+const matchesFilter = (h: RunHistoryEntry, f: StatusFilter, codeQuery: string) => {
+  if (codeQuery.trim()) {
+    const wanted = codeQuery
+      .split(/[,\s]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (wanted.length && !wanted.includes(String(h.status))) return false;
+  }
+  switch (f) {
+    case "all":
+      return true;
+    case "success":
+      return h.status >= 200 && h.status < 300;
+    case "redirect":
+      return h.status >= 300 && h.status < 400;
+    case "client":
+      return h.status >= 400 && h.status < 500;
+    case "server":
+      return h.status >= 500 && h.status < 600;
+    case "error":
+      return h.status === 0 || !!h.error;
+  }
+};
+
 export function RunHistoryPanel({ apiId }: { apiId: string }) {
   const history = useWorkspaceStore((s) => s.apis.find((a) => a.id === apiId)?.history ?? []);
   const clear = useWorkspaceStore((s) => s.clearHistory);
 
+  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [codeQuery, setCodeQuery] = useState("");
+
+  const filtered = useMemo(
+    () => history.filter((h) => matchesFilter(h, filter, codeQuery)),
+    [history, filter, codeQuery],
+  );
+
+  // Counts per filter for badges
+  const counts = useMemo(() => {
+    const c: Record<StatusFilter, number> = { all: history.length, success: 0, redirect: 0, client: 0, server: 0, error: 0 };
+    for (const h of history) {
+      if (h.status === 0 || h.error) c.error++;
+      else if (h.status < 300) c.success++;
+      else if (h.status < 400) c.redirect++;
+      else if (h.status < 500) c.client++;
+      else if (h.status < 600) c.server++;
+    }
+    return c;
+  }, [history]);
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Clock className="h-3 w-3" /> Last {Math.min(history.length, 25)} runs
@@ -41,10 +98,65 @@ export function RunHistoryPanel({ apiId }: { apiId: string }) {
         )}
       </div>
 
+      {history.length > 0 && (
+        <div className="rounded-md border border-border bg-card/30 p-2 space-y-2">
+          <div className="flex flex-wrap items-center gap-1">
+            <Filter className="h-3 w-3 text-muted-foreground mr-1" />
+            {STATUS_FILTERS.map((f) => {
+              const active = filter === f.id;
+              const count = counts[f.id];
+              const disabled = count === 0 && f.id !== "all";
+              return (
+                <button
+                  key={f.id}
+                  title={f.hint}
+                  disabled={disabled}
+                  onClick={() => setFilter(f.id)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-mono border transition-colors",
+                    active
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground hover:bg-accent/40",
+                    disabled && "opacity-40 cursor-not-allowed",
+                  )}
+                >
+                  {f.label}
+                  <span className="text-[10px] opacity-70">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              value={codeQuery}
+              onChange={(e) => setCodeQuery(e.target.value)}
+              placeholder="Filter by status code (e.g. 200, 404 503)"
+              className="flex-1 rounded bg-input border border-border px-2 py-1 text-[11px] font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            {(codeQuery || filter !== "all") && (
+              <button
+                onClick={() => {
+                  setCodeQuery("");
+                  setFilter("all");
+                }}
+                className="text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {history.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
           <Inbox className="h-8 w-8 mb-2 opacity-50" />
           <p className="text-xs">No runs yet — hit Run to log a request.</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground border border-dashed border-border rounded-md">
+          <Filter className="h-6 w-6 mb-2 opacity-50" />
+          <p className="text-xs">No runs match the current filter.</p>
         </div>
       ) : (
         <div className="rounded-md border border-border overflow-hidden">
@@ -59,11 +171,16 @@ export function RunHistoryPanel({ apiId }: { apiId: string }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {history.map((h) => (
+              {filtered.map((h) => (
                 <HistoryRow key={h.id} entry={h} />
               ))}
             </tbody>
           </table>
+          {filtered.length !== history.length && (
+            <div className="px-3 py-1.5 text-[10px] font-mono text-muted-foreground bg-card/40 border-t border-border">
+              Showing {filtered.length} of {history.length} runs
+            </div>
+          )}
         </div>
       )}
     </div>
