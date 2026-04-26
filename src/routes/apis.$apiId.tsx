@@ -7,6 +7,7 @@ import { StatusDot } from "@/components/status-dot";
 import { EnvSwitcher } from "@/components/env-switcher";
 import { JsonEditor } from "@/components/json-editor";
 import { buildCurl } from "@/lib/curl";
+import { RunHistoryPanel } from "@/components/run-history-panel";
 import {
   Send,
   Plus,
