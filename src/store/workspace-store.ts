@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { persist, type PersistStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
 import {
   workspaces as initialWorkspaces,
   folders as initialFolders,
@@ -288,11 +288,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       name: "devpulse-workspace",
       version: 5,
       // Persist only canonical state; rehydrate projections in onRehydrateStorage.
-      partialize: (s) => ({
-        workspaces: s.workspaces,
-        currentWorkspaceId: s.currentWorkspaceId,
-        data: s.data,
-      }),
+      partialize: (s) =>
+        ({
+          workspaces: s.workspaces,
+          currentWorkspaceId: s.currentWorkspaceId,
+          data: s.data,
+        }) as unknown as WorkspaceState,
       // Migrate older versions where folders/apis/environments lived at the top level.
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
@@ -324,7 +325,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         const proj = project(state.data, state.currentWorkspaceId);
         Object.assign(state, proj);
       },
-    } satisfies Parameters<typeof persist<WorkspaceState>>[1],
+    },
   ),
 );
 
