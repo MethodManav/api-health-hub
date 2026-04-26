@@ -409,34 +409,48 @@ function KeyValueList({
   placeholderKey,
   placeholderValue,
 }: {
-  rows: { key: string; value: string }[];
-  onChange: (next: { key: string; value: string }[]) => void;
+  rows: KeyValueRow[];
+  onChange: (next: KeyValueRow[]) => void;
   placeholderKey: string;
   placeholderValue: string;
 }) {
+  const update = (id: string, patch: Partial<Pick<KeyValueRow, "key" | "value">>) => {
+    const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
+    onChange(ensureTrailingEmpty(next));
+  };
+  const remove = (id: string) => {
+    const next = rows.filter((r) => r.id !== id);
+    onChange(ensureTrailingEmpty(next));
+  };
+  const add = () => onChange([...rows, newRow()]);
+
   return (
     <div className="space-y-2">
-      {rows.map((r, i) => (
-        <div key={i} className="flex gap-2">
+      {rows.map((r) => (
+        <div key={r.id} className="flex gap-2">
           <input
             value={r.key}
-            onChange={(e) => onChange(rows.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))}
+            onChange={(e) => update(r.id, { key: e.target.value })}
             placeholder={placeholderKey}
             className="flex-1 rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <input
             value={r.value}
-            onChange={(e) => onChange(rows.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
+            onChange={(e) => update(r.id, { value: e.target.value })}
             placeholder={placeholderValue}
             className="flex-[2] rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <button onClick={() => onChange(rows.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive p-1.5">
+          <button
+            onClick={() => remove(r.id)}
+            className="text-muted-foreground hover:text-destructive p-1.5"
+            title="Remove row"
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
       ))}
       <button
-        onClick={() => onChange([...rows, { key: "", value: "" }])}
+        onClick={add}
         className="inline-flex items-center gap-1.5 text-xs text-primary hover:opacity-80 mt-2"
       >
         <Plus className="h-3.5 w-3.5" /> Add row
