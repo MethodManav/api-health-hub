@@ -342,7 +342,22 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
               />
             )}
             {activeTab === "Body" && (
-              <JsonEditor value={body} onChange={setBody} />
+              <JsonEditor value={body} onChange={setBody} schema={bodySchema} />
+            )}
+            {activeTab === "Schema" && (
+              <div className="space-y-2">
+                <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                  JSON Schema (optional) — validates request body in real time
+                </div>
+                <JsonEditor
+                  value={bodySchema}
+                  onChange={setBodySchema}
+                  height="360px"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Paste a JSON Schema (Draft-07+). Field-level errors will appear in the Body tab.
+                </p>
+              </div>
             )}
             {activeTab === "Auth" && (
               <div className="space-y-3 max-w-md">
@@ -372,6 +387,7 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
                 body={interpolateEnv(body, envVars)}
               />
             )}
+            {activeTab === "History" && <RunHistoryPanel apiId={apiId} />}
           </div>
         </div>
 
