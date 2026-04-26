@@ -202,8 +202,18 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
         latency: elapsed,
         status: res.ok ? "healthy" : res.status >= 500 ? "down" : "degraded",
       });
+      recordRun(api.id, {
+        method,
+        url: finalUrl,
+        status: res.status,
+        statusText: res.statusText,
+        time: elapsed,
+        size: new Blob([text]).size,
+        ok: res.ok,
+      });
     } catch (err) {
       const elapsed = Math.round(performance.now() - start);
+      const message = err instanceof Error ? err.message : String(err);
       setResponse({
         status: 0,
         statusText: "Network Error",
@@ -211,9 +221,19 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
         size: 0,
         headers: {},
         body: "",
-        error: err instanceof Error ? err.message : String(err),
+        error: message,
       });
       updateApi(api.id, { status: "down" });
+      recordRun(api.id, {
+        method,
+        url: resolvedPreviewWithParams,
+        status: 0,
+        statusText: "Network Error",
+        time: elapsed,
+        size: 0,
+        ok: false,
+        error: message,
+      });
     } finally {
       setLoading(false);
     }
