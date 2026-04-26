@@ -5,8 +5,37 @@ import type { HttpMethod, KeyValueRow } from "@/lib/mock-data";
 import { MethodBadge } from "@/components/method-badge";
 import { StatusDot } from "@/components/status-dot";
 import { EnvSwitcher } from "@/components/env-switcher";
-import { Send, Plus, Trash2, AlertTriangle, Save } from "lucide-react";
+import { JsonEditor } from "@/components/json-editor";
+import { buildCurl } from "@/lib/curl";
+import {
+  Send,
+  Plus,
+  Trash2,
+  AlertTriangle,
+  Save,
+  GripVertical,
+  Copy,
+  Check,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
 
 let __rowSeq = 0;
 const newRow = (key = "", value = ""): KeyValueRow => ({
