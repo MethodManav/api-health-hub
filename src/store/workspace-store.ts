@@ -37,6 +37,8 @@ type WorkspaceState = {
   addApi: (input: { name: string; method: HttpMethod; endpoint: string; folderId: string | null }) => ApiEndpoint;
   updateApi: (id: string, patch: Partial<ApiEndpoint>) => void;
   deleteApi: (id: string) => void;
+  recordRun: (apiId: string, entry: Omit<RunHistoryEntry, "id" | "timestamp">) => void;
+  clearHistory: (apiId: string) => void;
 
   // Environments
   environments: Environment[];
