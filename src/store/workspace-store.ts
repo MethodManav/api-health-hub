@@ -8,7 +8,10 @@ import {
   type Folder,
   type ApiEndpoint,
   type HttpMethod,
+  type RunHistoryEntry,
 } from "@/lib/mock-data";
+
+const MAX_HISTORY = 25;
 
 export type EnvVariable = { key: string; value: string; secret?: boolean };
 export type Environment = {
