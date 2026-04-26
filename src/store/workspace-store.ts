@@ -153,7 +153,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: "devpulse-workspace",
-      version: 2,
+      version: 3,
       partialize: (s) => ({
         workspaces: s.workspaces,
         currentWorkspaceId: s.currentWorkspaceId,

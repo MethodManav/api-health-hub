@@ -1,12 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore, interpolateEnv, extractVarRefs } from "@/store/workspace-store";
-import type { HttpMethod } from "@/lib/mock-data";
+import type { HttpMethod, KeyValueRow } from "@/lib/mock-data";
 import { MethodBadge } from "@/components/method-badge";
 import { StatusDot } from "@/components/status-dot";
 import { EnvSwitcher } from "@/components/env-switcher";
 import { Send, Plus, Trash2, AlertTriangle, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+let __rowSeq = 0;
+const newRow = (key = "", value = ""): KeyValueRow => ({
+  id: `r-${Date.now().toString(36)}-${(++__rowSeq).toString(36)}`,
+  key,
+  value,
+});
+const ensureTrailingEmpty = (rows: KeyValueRow[]): KeyValueRow[] => {
+  if (rows.length === 0 || rows[rows.length - 1].key !== "" || rows[rows.length - 1].value !== "") {
+    return [...rows, newRow()];
+  }
+  return rows;
+};
+const stripEmpty = (rows: KeyValueRow[]) =>
+  rows.filter((r) => r.key.trim() !== "" || r.value.trim() !== "");
 
 export const Route = createFileRoute("/apis/$apiId")({
   component: ApiEditor,
@@ -56,11 +71,30 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
   const [response, setResponse] = useState<ResponseState | null>(null);
   const [loading, setLoading] = useState(false);
   const [responseTab, setResponseTab] = useState<"body" | "headers">("body");
-  const [params, setParams] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
-  const [headers, setHeaders] = useState([
-    { key: "Accept", value: "application/json" },
-  ]);
-  const [body, setBody] = useState(`{\n  "key": "value"\n}`);
+  const [params, setParams] = useState<KeyValueRow[]>(() =>
+    ensureTrailingEmpty(api.params ?? []),
+  );
+  const [headers, setHeaders] = useState<KeyValueRow[]>(() =>
+    ensureTrailingEmpty(api.headers ?? [newRow("Accept", "application/json")]),
+  );
+  const [body, setBody] = useState(api.body ?? `{\n  "key": "value"\n}`);
+
+  // Persist params/headers/body to store (debounced) so changes survive navigation.
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    const t = setTimeout(() => {
+      updateApi(apiId, {
+        params: stripEmpty(params),
+        headers: stripEmpty(headers),
+        body,
+      });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [params, headers, body, apiId, updateApi]);
 
   // Detect referenced env vars
   const referencedVars = useMemo(() => {
@@ -375,34 +409,48 @@ function KeyValueList({
   placeholderKey,
   placeholderValue,
 }: {
-  rows: { key: string; value: string }[];
-  onChange: (next: { key: string; value: string }[]) => void;
+  rows: KeyValueRow[];
+  onChange: (next: KeyValueRow[]) => void;
   placeholderKey: string;
   placeholderValue: string;
 }) {
+  const update = (id: string, patch: Partial<Pick<KeyValueRow, "key" | "value">>) => {
+    const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
+    onChange(ensureTrailingEmpty(next));
+  };
+  const remove = (id: string) => {
+    const next = rows.filter((r) => r.id !== id);
+    onChange(ensureTrailingEmpty(next));
+  };
+  const add = () => onChange([...rows, newRow()]);
+
   return (
     <div className="space-y-2">
-      {rows.map((r, i) => (
-        <div key={i} className="flex gap-2">
+      {rows.map((r) => (
+        <div key={r.id} className="flex gap-2">
           <input
             value={r.key}
-            onChange={(e) => onChange(rows.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))}
+            onChange={(e) => update(r.id, { key: e.target.value })}
             placeholder={placeholderKey}
             className="flex-1 rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <input
             value={r.value}
-            onChange={(e) => onChange(rows.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))}
+            onChange={(e) => update(r.id, { value: e.target.value })}
             placeholder={placeholderValue}
             className="flex-[2] rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <button onClick={() => onChange(rows.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive p-1.5">
+          <button
+            onClick={() => remove(r.id)}
+            className="text-muted-foreground hover:text-destructive p-1.5"
+            title="Remove row"
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
       ))}
       <button
-        onClick={() => onChange([...rows, { key: "", value: "" }])}
+        onClick={add}
         className="inline-flex items-center gap-1.5 text-xs text-primary hover:opacity-80 mt-2"
       >
         <Plus className="h-3.5 w-3.5" /> Add row
