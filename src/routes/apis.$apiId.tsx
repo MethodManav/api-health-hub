@@ -71,11 +71,30 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
   const [response, setResponse] = useState<ResponseState | null>(null);
   const [loading, setLoading] = useState(false);
   const [responseTab, setResponseTab] = useState<"body" | "headers">("body");
-  const [params, setParams] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
-  const [headers, setHeaders] = useState([
-    { key: "Accept", value: "application/json" },
-  ]);
-  const [body, setBody] = useState(`{\n  "key": "value"\n}`);
+  const [params, setParams] = useState<KeyValueRow[]>(() =>
+    ensureTrailingEmpty(api.params ?? []),
+  );
+  const [headers, setHeaders] = useState<KeyValueRow[]>(() =>
+    ensureTrailingEmpty(api.headers ?? [newRow("Accept", "application/json")]),
+  );
+  const [body, setBody] = useState(api.body ?? `{\n  "key": "value"\n}`);
+
+  // Persist params/headers/body to store (debounced) so changes survive navigation.
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    const t = setTimeout(() => {
+      updateApi(apiId, {
+        params: stripEmpty(params),
+        headers: stripEmpty(headers),
+        body,
+      });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [params, headers, body, apiId, updateApi]);
 
   // Detect referenced env vars
   const referencedVars = useMemo(() => {
