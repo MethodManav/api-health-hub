@@ -449,6 +449,11 @@ function KeyValueList({
   placeholderKey: string;
   placeholderValue: string;
 }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const update = (id: string, patch: Partial<Pick<KeyValueRow, "key" | "value">>) => {
     const next = rows.map((r) => (r.id === id ? { ...r, ...patch } : r));
     onChange(ensureTrailingEmpty(next));
@@ -459,37 +464,170 @@ function KeyValueList({
   };
   const add = () => onChange([...rows, newRow()]);
 
+  const onDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const oldIndex = rows.findIndex((r) => r.id === active.id);
+    const newIndex = rows.findIndex((r) => r.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    onChange(ensureTrailingEmpty(arrayMove(rows, oldIndex, newIndex)));
+  };
+
+  // Duplicate detection (case-insensitive, ignore empty keys)
+  const dupSet = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of rows) {
+      const k = r.key.trim().toLowerCase();
+      if (!k) continue;
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    const dups = new Set<string>();
+    counts.forEach((n, k) => { if (n > 1) dups.add(k); });
+    return dups;
+  }, [rows]);
+
+  const duplicateKeys = Array.from(dupSet);
+
   return (
     <div className="space-y-2">
-      {rows.map((r) => (
-        <div key={r.id} className="flex gap-2">
-          <input
-            value={r.key}
-            onChange={(e) => update(r.id, { key: e.target.value })}
-            placeholder={placeholderKey}
-            className="flex-1 rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <input
-            value={r.value}
-            onChange={(e) => update(r.id, { value: e.target.value })}
-            placeholder={placeholderValue}
-            className="flex-[2] rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <button
-            onClick={() => remove(r.id)}
-            className="text-muted-foreground hover:text-destructive p-1.5"
-            title="Remove row"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+      {duplicateKeys.length > 0 && (
+        <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-[11px] font-mono text-warning">
+          <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>
+            Duplicate {duplicateKeys.length === 1 ? "key" : "keys"}:{" "}
+            {duplicateKeys.map((k) => `"${k}"`).join(", ")} — only the last value will be sent.
+          </span>
         </div>
-      ))}
+      )}
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
+          {rows.map((r) => (
+            <SortableRow
+              key={r.id}
+              row={r}
+              isDuplicate={dupSet.has(r.key.trim().toLowerCase()) && r.key.trim() !== ""}
+              onUpdate={(patch) => update(r.id, patch)}
+              onRemove={() => remove(r.id)}
+              placeholderKey={placeholderKey}
+              placeholderValue={placeholderValue}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
+
       <button
         onClick={add}
         className="inline-flex items-center gap-1.5 text-xs text-primary hover:opacity-80 mt-2"
       >
         <Plus className="h-3.5 w-3.5" /> Add row
       </button>
+    </div>
+  );
+}
+
+function SortableRow({
+  row,
+  isDuplicate,
+  onUpdate,
+  onRemove,
+  placeholderKey,
+  placeholderValue,
+}: {
+  row: KeyValueRow;
+  isDuplicate: boolean;
+  onUpdate: (patch: Partial<Pick<KeyValueRow, "key" | "value">>) => void;
+  onRemove: () => void;
+  placeholderKey: string;
+  placeholderValue: string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: row.id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex gap-2 items-center">
+      <button
+        type="button"
+        className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing p-1 touch-none"
+        title="Drag to reorder"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
+      <input
+        value={row.key}
+        onChange={(e) => onUpdate({ key: e.target.value })}
+        placeholder={placeholderKey}
+        className={cn(
+          "flex-1 rounded-md bg-input border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary",
+          isDuplicate ? "border-warning/60" : "border-border",
+        )}
+      />
+      <input
+        value={row.value}
+        onChange={(e) => onUpdate({ value: e.target.value })}
+        placeholder={placeholderValue}
+        className="flex-[2] rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+      />
+      <button
+        onClick={onRemove}
+        className="text-muted-foreground hover:text-destructive p-1.5"
+        title="Remove row"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function CurlPreview({
+  method,
+  url,
+  headers,
+  body,
+}: {
+  method: HttpMethod;
+  url: string;
+  headers: KeyValueRow[];
+  body: string;
+}) {
+  const curl = useMemo(() => buildCurl({ method, url, headers, body }), [method, url, headers, body]);
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(curl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+          cURL preview (with environment resolved)
+        </div>
+        <button
+          onClick={copy}
+          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="rounded-md border border-border bg-input p-3 text-xs font-mono whitespace-pre-wrap break-all text-foreground/90">
+        {curl}
+      </pre>
     </div>
   );
 }
