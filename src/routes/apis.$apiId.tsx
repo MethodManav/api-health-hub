@@ -1,12 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore, interpolateEnv, extractVarRefs } from "@/store/workspace-store";
-import type { HttpMethod } from "@/lib/mock-data";
+import type { HttpMethod, KeyValueRow } from "@/lib/mock-data";
 import { MethodBadge } from "@/components/method-badge";
 import { StatusDot } from "@/components/status-dot";
 import { EnvSwitcher } from "@/components/env-switcher";
 import { Send, Plus, Trash2, AlertTriangle, Save } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+let __rowSeq = 0;
+const newRow = (key = "", value = ""): KeyValueRow => ({
+  id: `r-${Date.now().toString(36)}-${(++__rowSeq).toString(36)}`,
+  key,
+  value,
+});
+const ensureTrailingEmpty = (rows: KeyValueRow[]): KeyValueRow[] => {
+  if (rows.length === 0 || rows[rows.length - 1].key !== "" || rows[rows.length - 1].value !== "") {
+    return [...rows, newRow()];
+  }
+  return rows;
+};
+const stripEmpty = (rows: KeyValueRow[]) =>
+  rows.filter((r) => r.key.trim() !== "" || r.value.trim() !== "");
 
 export const Route = createFileRoute("/apis/$apiId")({
   component: ApiEditor,
