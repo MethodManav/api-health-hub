@@ -129,6 +129,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       updateApi: (id, patch) =>
         set({ apis: get().apis.map((a) => (a.id === id ? { ...a, ...patch } : a)) }),
       deleteApi: (id) => set({ apis: get().apis.filter((a) => a.id !== id) }),
+      recordRun: (apiId, entry) => {
+        const id = `run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const next: RunHistoryEntry = { ...entry, id, timestamp: Date.now() };
+        set({
+          apis: get().apis.map((a) =>
+            a.id === apiId
+              ? { ...a, history: [next, ...(a.history ?? [])].slice(0, MAX_HISTORY) }
+              : a,
+          ),
+        });
+      },
+      clearHistory: (apiId) =>
+        set({ apis: get().apis.map((a) => (a.id === apiId ? { ...a, history: [] } : a)) }),
 
       environments: defaultEnvironments,
       activeEnvironmentId: "env-prod",
