@@ -8,7 +8,10 @@ import {
   type Folder,
   type ApiEndpoint,
   type HttpMethod,
+  type RunHistoryEntry,
 } from "@/lib/mock-data";
+
+const MAX_HISTORY = 25;
 
 export type EnvVariable = { key: string; value: string; secret?: boolean };
 export type Environment = {
@@ -34,6 +37,8 @@ type WorkspaceState = {
   addApi: (input: { name: string; method: HttpMethod; endpoint: string; folderId: string | null }) => ApiEndpoint;
   updateApi: (id: string, patch: Partial<ApiEndpoint>) => void;
   deleteApi: (id: string) => void;
+  recordRun: (apiId: string, entry: Omit<RunHistoryEntry, "id" | "timestamp">) => void;
+  clearHistory: (apiId: string) => void;
 
   // Environments
   environments: Environment[];
@@ -124,6 +129,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       updateApi: (id, patch) =>
         set({ apis: get().apis.map((a) => (a.id === id ? { ...a, ...patch } : a)) }),
       deleteApi: (id) => set({ apis: get().apis.filter((a) => a.id !== id) }),
+      recordRun: (apiId, entry) => {
+        const id = `run-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const next: RunHistoryEntry = { ...entry, id, timestamp: Date.now() };
+        set({
+          apis: get().apis.map((a) =>
+            a.id === apiId
+              ? { ...a, history: [next, ...(a.history ?? [])].slice(0, MAX_HISTORY) }
+              : a,
+          ),
+        });
+      },
+      clearHistory: (apiId) =>
+        set({ apis: get().apis.map((a) => (a.id === apiId ? { ...a, history: [] } : a)) }),
 
       environments: defaultEnvironments,
       activeEnvironmentId: "env-prod",
@@ -153,7 +171,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: "devpulse-workspace",
-      version: 3,
+      version: 4,
       partialize: (s) => ({
         workspaces: s.workspaces,
         currentWorkspaceId: s.currentWorkspaceId,

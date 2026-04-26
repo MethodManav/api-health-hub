@@ -2,6 +2,19 @@ export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
 export type KeyValueRow = { id: string; key: string; value: string };
 
+export type RunHistoryEntry = {
+  id: string;
+  timestamp: number;
+  method: HttpMethod;
+  url: string;
+  status: number; // 0 = network error
+  statusText: string;
+  time: number; // ms
+  size: number; // bytes
+  ok: boolean;
+  error?: string;
+};
+
 export type ApiEndpoint = {
   id: string;
   name: string;
@@ -14,6 +27,8 @@ export type ApiEndpoint = {
   params?: KeyValueRow[];
   headers?: KeyValueRow[];
   body?: string;
+  bodySchema?: string; // JSON Schema text
+  history?: RunHistoryEntry[];
 };
 
 export type Folder = {

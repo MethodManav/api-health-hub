@@ -7,6 +7,7 @@ import { StatusDot } from "@/components/status-dot";
 import { EnvSwitcher } from "@/components/env-switcher";
 import { JsonEditor } from "@/components/json-editor";
 import { buildCurl } from "@/lib/curl";
+import { RunHistoryPanel } from "@/components/run-history-panel";
 import {
   Send,
   Plus,
@@ -58,7 +59,7 @@ export const Route = createFileRoute("/apis/$apiId")({
 });
 
 const METHODS: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH"];
-const TABS = ["Params", "Headers", "Body", "Auth", "cURL"] as const;
+const TABS = ["Params", "Headers", "Body", "Schema", "Auth", "cURL", "History"] as const;
 
 function ApiEditor() {
   const { apiId } = Route.useParams();
@@ -89,6 +90,7 @@ type ResponseState = {
 function ApiEditorInner({ apiId }: { apiId: string }) {
   const api = useWorkspaceStore((s) => s.apis.find((a) => a.id === apiId)!);
   const updateApi = useWorkspaceStore((s) => s.updateApi);
+  const recordRun = useWorkspaceStore((s) => s.recordRun);
   const environments = useWorkspaceStore((s) => s.environments);
   const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
   const activeEnv = environments.find((e) => e.id === activeEnvironmentId);
@@ -107,8 +109,9 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
     ensureTrailingEmpty(api.headers ?? [newRow("Accept", "application/json")]),
   );
   const [body, setBody] = useState(api.body ?? `{\n  "key": "value"\n}`);
+  const [bodySchema, setBodySchema] = useState(api.bodySchema ?? "");
 
-  // Persist params/headers/body to store (debounced) so changes survive navigation.
+  // Persist params/headers/body/schema to store (debounced) so changes survive navigation.
   const firstRun = useRef(true);
   useEffect(() => {
     if (firstRun.current) {
@@ -120,10 +123,11 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
         params: stripEmpty(params),
         headers: stripEmpty(headers),
         body,
+        bodySchema,
       });
     }, 300);
     return () => clearTimeout(t);
-  }, [params, headers, body, apiId, updateApi]);
+  }, [params, headers, body, bodySchema, apiId, updateApi]);
 
   // Detect referenced env vars
   const referencedVars = useMemo(() => {
@@ -198,8 +202,18 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
         latency: elapsed,
         status: res.ok ? "healthy" : res.status >= 500 ? "down" : "degraded",
       });
+      recordRun(api.id, {
+        method,
+        url: finalUrl,
+        status: res.status,
+        statusText: res.statusText,
+        time: elapsed,
+        size: new Blob([text]).size,
+        ok: res.ok,
+      });
     } catch (err) {
       const elapsed = Math.round(performance.now() - start);
+      const message = err instanceof Error ? err.message : String(err);
       setResponse({
         status: 0,
         statusText: "Network Error",
@@ -207,9 +221,19 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
         size: 0,
         headers: {},
         body: "",
-        error: err instanceof Error ? err.message : String(err),
+        error: message,
       });
       updateApi(api.id, { status: "down" });
+      recordRun(api.id, {
+        method,
+        url: resolvedPreviewWithParams,
+        status: 0,
+        statusText: "Network Error",
+        time: elapsed,
+        size: 0,
+        ok: false,
+        error: message,
+      });
     } finally {
       setLoading(false);
     }
@@ -318,7 +342,22 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
               />
             )}
             {activeTab === "Body" && (
-              <JsonEditor value={body} onChange={setBody} />
+              <JsonEditor value={body} onChange={setBody} schema={bodySchema} />
+            )}
+            {activeTab === "Schema" && (
+              <div className="space-y-2">
+                <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                  JSON Schema (optional) — validates request body in real time
+                </div>
+                <JsonEditor
+                  value={bodySchema}
+                  onChange={setBodySchema}
+                  height="360px"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Paste a JSON Schema (Draft-07+). Field-level errors will appear in the Body tab.
+                </p>
+              </div>
             )}
             {activeTab === "Auth" && (
               <div className="space-y-3 max-w-md">
@@ -348,6 +387,7 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
                 body={interpolateEnv(body, envVars)}
               />
             )}
+            {activeTab === "History" && <RunHistoryPanel apiId={apiId} />}
           </div>
         </div>
 
