@@ -108,8 +108,9 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
     ensureTrailingEmpty(api.headers ?? [newRow("Accept", "application/json")]),
   );
   const [body, setBody] = useState(api.body ?? `{\n  "key": "value"\n}`);
+  const [bodySchema, setBodySchema] = useState(api.bodySchema ?? "");
 
-  // Persist params/headers/body to store (debounced) so changes survive navigation.
+  // Persist params/headers/body/schema to store (debounced) so changes survive navigation.
   const firstRun = useRef(true);
   useEffect(() => {
     if (firstRun.current) {
@@ -121,10 +122,11 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
         params: stripEmpty(params),
         headers: stripEmpty(headers),
         body,
+        bodySchema,
       });
     }, 300);
     return () => clearTimeout(t);
-  }, [params, headers, body, apiId, updateApi]);
+  }, [params, headers, body, bodySchema, apiId, updateApi]);
 
   // Detect referenced env vars
   const referencedVars = useMemo(() => {
