@@ -318,15 +318,7 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
               />
             )}
             {activeTab === "Body" && (
-              <div>
-                <div className="text-[10px] font-mono text-muted-foreground mb-2 uppercase tracking-wider">JSON</div>
-                <textarea
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  spellCheck={false}
-                  className="w-full h-[400px] rounded-md bg-input border border-border p-3 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                />
-              </div>
+              <JsonEditor value={body} onChange={setBody} />
             )}
             {activeTab === "Auth" && (
               <div className="space-y-3 max-w-md">
@@ -341,6 +333,20 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
                   Tip: use <code className="font-mono text-primary">{`{{token}}`}</code> in headers and define it in your environment.
                 </p>
               </div>
+            )}
+            {activeTab === "cURL" && (
+              <CurlPreview
+                method={method}
+                url={resolvedPreviewWithParams}
+                headers={headers
+                  .filter((h) => h.key.trim())
+                  .map((h) => ({
+                    ...h,
+                    key: interpolateEnv(h.key, envVars),
+                    value: interpolateEnv(h.value, envVars),
+                  }))}
+                body={interpolateEnv(body, envVars)}
+              />
             )}
           </div>
         </div>
