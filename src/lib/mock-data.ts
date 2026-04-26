@@ -1,5 +1,7 @@
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
+export type KeyValueRow = { id: string; key: string; value: string };
+
 export type ApiEndpoint = {
   id: string;
   name: string;
@@ -9,6 +11,9 @@ export type ApiEndpoint = {
   status: "healthy" | "degraded" | "down";
   latency: number;
   uptime: number;
+  params?: KeyValueRow[];
+  headers?: KeyValueRow[];
+  body?: string;
 };
 
 export type Folder = {
