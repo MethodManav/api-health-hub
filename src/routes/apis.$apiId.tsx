@@ -58,7 +58,7 @@ export const Route = createFileRoute("/apis/$apiId")({
 });
 
 const METHODS: HttpMethod[] = ["GET", "POST", "PUT", "DELETE", "PATCH"];
-const TABS = ["Params", "Headers", "Body", "Auth"] as const;
+const TABS = ["Params", "Headers", "Body", "Auth", "cURL"] as const;
 
 function ApiEditor() {
   const { apiId } = Route.useParams();
