@@ -90,6 +90,7 @@ type ResponseState = {
 function ApiEditorInner({ apiId }: { apiId: string }) {
   const api = useWorkspaceStore((s) => s.apis.find((a) => a.id === apiId)!);
   const updateApi = useWorkspaceStore((s) => s.updateApi);
+  const recordRun = useWorkspaceStore((s) => s.recordRun);
   const environments = useWorkspaceStore((s) => s.environments);
   const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
   const activeEnv = environments.find((e) => e.id === activeEnvironmentId);
