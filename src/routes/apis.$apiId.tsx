@@ -611,12 +611,14 @@ function SortableRow({
           isDuplicate ? "border-warning/60" : "border-border",
         )}
       />
-      <input
-        value={row.value}
-        onChange={(e) => onUpdate({ value: e.target.value })}
-        placeholder={placeholderValue}
-        className="flex-[2] rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-      />
+      <div className="flex-[2]">
+        <EnvVarInput
+          value={row.value}
+          onChange={(v) => onUpdate({ value: v })}
+          placeholder={placeholderValue}
+          className="w-full rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
       <button
         onClick={onRemove}
         className="text-muted-foreground hover:text-destructive p-1.5"
