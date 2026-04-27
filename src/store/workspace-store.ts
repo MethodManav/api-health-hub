@@ -22,11 +22,15 @@ export type Environment = {
 };
 
 /** All data that is scoped to a single workspace. */
+export type HistoryFilter = { status: string; codeQuery: string };
+
 export type WorkspaceData = {
   folders: Folder[];
   apis: ApiEndpoint[];
   environments: Environment[];
   activeEnvironmentId: string | null;
+  /** Per-API saved History tab filters. */
+  historyFilters: Record<string, HistoryFilter>;
 };
 
 type WorkspaceState = {
@@ -54,6 +58,7 @@ type WorkspaceState = {
   deleteApi: (id: string) => void;
   recordRun: (apiId: string, entry: Omit<RunHistoryEntry, "id" | "timestamp">) => void;
   clearHistory: (apiId: string) => void;
+  setHistoryFilter: (apiId: string, filter: HistoryFilter) => void;
 
   setActiveEnvironment: (id: string | null) => void;
   addEnvironment: (name: string) => Environment;
@@ -103,6 +108,7 @@ const emptyWorkspaceData = (): WorkspaceData => {
     apis: [],
     environments: envs,
     activeEnvironmentId: envs[0]?.id ?? null,
+    historyFilters: {},
   };
 };
 
@@ -234,6 +240,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const next = patchWorkspace(get(), (d) => ({
             ...d,
             apis: d.apis.map((a) => (a.id === apiId ? { ...a, history: [] } : a)),
+          }));
+          set({ ...next, ...project(next.data, get().currentWorkspaceId) });
+        },
+        setHistoryFilter: (apiId, filter) => {
+          const next = patchWorkspace(get(), (d) => ({
+            ...d,
+            historyFilters: { ...(d.historyFilters ?? {}), [apiId]: filter },
           }));
           set({ ...next, ...project(next.data, get().currentWorkspaceId) });
         },
