@@ -6,20 +6,42 @@ import { Variable } from "lucide-react";
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
   value: string;
   onChange: (next: string) => void;
+  /** When true, only suggest variables defined in the active environment. */
+  activeOnly?: boolean;
 };
+
+const ACTIVE_ONLY_KEY = "envvar.activeOnly";
 
 /**
  * Input that shows Postman-style env-var suggestions when the user types `{{`.
- * Suggestions are pulled from the active workspace's environment variables
- * (across all environments — Postman behavior). Selecting one inserts `{{key}}`.
+ * By default, suggestions are pulled from all environments in the workspace
+ * (Postman behavior). A toggle in the popup (persisted in localStorage) lets
+ * users restrict suggestions to the active environment only. Selecting one
+ * inserts `{{key}}`.
  */
-export function EnvVarInput({ value, onChange, className, ...rest }: Props) {
+export function EnvVarInput({ value, onChange, className, activeOnly: activeOnlyProp, ...rest }: Props) {
   const environments = useWorkspaceStore((s) => s.environments);
   const activeEnvId = useWorkspaceStore((s) => s.activeEnvironmentId);
 
+  const [activeOnlyState, setActiveOnlyState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(ACTIVE_ONLY_KEY) === "1";
+  });
+  const activeOnly = activeOnlyProp ?? activeOnlyState;
+
+  const setActiveOnly = (v: boolean) => {
+    setActiveOnlyState(v);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ACTIVE_ONLY_KEY, v ? "1" : "0");
+    }
+  };
+
   const allVars = useMemo(() => {
     const map = new Map<string, { key: string; value: string; envName: string; isActive: boolean }>();
-    for (const env of environments) {
+    const sources = activeOnly
+      ? environments.filter((e) => e.id === activeEnvId)
+      : environments;
+    for (const env of sources) {
       for (const v of env.variables) {
         if (!v.key) continue;
         // Prefer active env entry on duplicates
@@ -36,7 +58,7 @@ export function EnvVarInput({ value, onChange, className, ...rest }: Props) {
     return Array.from(map.values()).sort((a, b) =>
       a.isActive === b.isActive ? a.key.localeCompare(b.key) : a.isActive ? -1 : 1,
     );
-  }, [environments, activeEnvId]);
+  }, [environments, activeEnvId, activeOnly]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -129,11 +151,35 @@ export function EnvVarInput({ value, onChange, className, ...rest }: Props) {
         className={className}
         {...rest}
       />
-      {open && filtered.length > 0 && (
+      {open && (
         <div className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-lg">
-          <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border flex items-center gap-1">
-            <Variable className="h-3 w-3" /> Environment variables
+          <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1">
+              <Variable className="h-3 w-3" /> Env vars
+              {activeOnly && <span className="text-primary normal-case">· active only</span>}
+            </span>
+            {activeOnlyProp === undefined && (
+              <label
+                className="flex items-center gap-1 normal-case tracking-normal cursor-pointer hover:text-foreground"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <input
+                  type="checkbox"
+                  checked={activeOnly}
+                  onChange={(e) => setActiveOnly(e.target.checked)}
+                  className="h-3 w-3 accent-primary cursor-pointer"
+                />
+                Active env only
+              </label>
+            )}
           </div>
+          {filtered.length === 0 && (
+            <div className="px-2 py-3 text-[11px] font-mono text-muted-foreground text-center">
+              {activeOnly
+                ? "No matching variables in the active environment."
+                : "No matching variables."}
+            </div>
+          )}
           {filtered.map((v, i) => (
             <button
               key={v.key}
