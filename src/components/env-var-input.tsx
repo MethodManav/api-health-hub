@@ -151,11 +151,35 @@ export function EnvVarInput({ value, onChange, className, activeOnly: activeOnly
         className={className}
         {...rest}
       />
-      {open && filtered.length > 0 && (
+      {open && (
         <div className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-lg">
-          <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border flex items-center gap-1">
-            <Variable className="h-3 w-3" /> Environment variables
+          <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1">
+              <Variable className="h-3 w-3" /> Env vars
+              {activeOnly && <span className="text-primary normal-case">· active only</span>}
+            </span>
+            {activeOnlyProp === undefined && (
+              <label
+                className="flex items-center gap-1 normal-case tracking-normal cursor-pointer hover:text-foreground"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <input
+                  type="checkbox"
+                  checked={activeOnly}
+                  onChange={(e) => setActiveOnly(e.target.checked)}
+                  className="h-3 w-3 accent-primary cursor-pointer"
+                />
+                Active env only
+              </label>
+            )}
           </div>
+          {filtered.length === 0 && (
+            <div className="px-2 py-3 text-[11px] font-mono text-muted-foreground text-center">
+              {activeOnly
+                ? "No matching variables in the active environment."
+                : "No matching variables."}
+            </div>
+          )}
           {filtered.map((v, i) => (
             <button
               key={v.key}
