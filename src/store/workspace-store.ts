@@ -299,7 +299,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     },
     {
       name: "devpulse-workspace",
-      version: 5,
+      version: 6,
       // Persist only canonical state; rehydrate projections in onRehydrateStorage.
       partialize: (s) =>
         ({
@@ -307,7 +307,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           currentWorkspaceId: s.currentWorkspaceId,
           data: s.data,
         }) as unknown as WorkspaceState,
-      // Migrate older versions where folders/apis/environments lived at the top level.
+      // Migrate older versions.
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 5) {
@@ -325,11 +325,19 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               (persisted.environments?.[0]?.id ?? null),
             historyFilters: {},
           };
-          return {
+          persisted = {
             workspaces: persisted.workspaces ?? initialWorkspaces,
             currentWorkspaceId: wsId,
             data,
           };
+        }
+        if (version < 6) {
+          // v5 -> v6: ensure each workspace has a historyFilters map.
+          const data = { ...(persisted.data ?? {}) } as Record<string, WorkspaceData>;
+          for (const k of Object.keys(data)) {
+            data[k] = { ...data[k], historyFilters: data[k].historyFilters ?? {} };
+          }
+          persisted = { ...persisted, data };
         }
         return persisted;
       },
