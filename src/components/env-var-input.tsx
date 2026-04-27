@@ -6,8 +6,10 @@ import { Variable } from "lucide-react";
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
   value: string;
   onChange: (next: string) => void;
-  /** When true, only suggest variables defined in the active environment. */
+  /** When provided, controls the "active env only" mode externally (e.g. persisted per API). */
   activeOnly?: boolean;
+  /** Called when the user toggles the in-popup "active env only" checkbox. */
+  onActiveOnlyChange?: (next: boolean) => void;
 };
 
 const ACTIVE_ONLY_KEY = "envvar.activeOnly";
@@ -15,11 +17,19 @@ const ACTIVE_ONLY_KEY = "envvar.activeOnly";
 /**
  * Input that shows Postman-style env-var suggestions when the user types `{{`.
  * By default, suggestions are pulled from all environments in the workspace
- * (Postman behavior). A toggle in the popup (persisted in localStorage) lets
- * users restrict suggestions to the active environment only. Selecting one
- * inserts `{{key}}`.
+ * (Postman behavior). A toggle in the popup lets users restrict suggestions
+ * to the active environment only — controlled externally when `activeOnly`
+ * is provided, otherwise persisted in localStorage as a global default.
+ * Selecting an entry inserts `{{key}}`.
  */
-export function EnvVarInput({ value, onChange, className, activeOnly: activeOnlyProp, ...rest }: Props) {
+export function EnvVarInput({
+  value,
+  onChange,
+  className,
+  activeOnly: activeOnlyProp,
+  onActiveOnlyChange,
+  ...rest
+}: Props) {
   const environments = useWorkspaceStore((s) => s.environments);
   const activeEnvId = useWorkspaceStore((s) => s.activeEnvironmentId);
 
