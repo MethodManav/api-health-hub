@@ -6,20 +6,42 @@ import { Variable } from "lucide-react";
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
   value: string;
   onChange: (next: string) => void;
+  /** When true, only suggest variables defined in the active environment. */
+  activeOnly?: boolean;
 };
+
+const ACTIVE_ONLY_KEY = "envvar.activeOnly";
 
 /**
  * Input that shows Postman-style env-var suggestions when the user types `{{`.
- * Suggestions are pulled from the active workspace's environment variables
- * (across all environments — Postman behavior). Selecting one inserts `{{key}}`.
+ * By default, suggestions are pulled from all environments in the workspace
+ * (Postman behavior). A toggle in the popup (persisted in localStorage) lets
+ * users restrict suggestions to the active environment only. Selecting one
+ * inserts `{{key}}`.
  */
-export function EnvVarInput({ value, onChange, className, ...rest }: Props) {
+export function EnvVarInput({ value, onChange, className, activeOnly: activeOnlyProp, ...rest }: Props) {
   const environments = useWorkspaceStore((s) => s.environments);
   const activeEnvId = useWorkspaceStore((s) => s.activeEnvironmentId);
 
+  const [activeOnlyState, setActiveOnlyState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(ACTIVE_ONLY_KEY) === "1";
+  });
+  const activeOnly = activeOnlyProp ?? activeOnlyState;
+
+  const setActiveOnly = (v: boolean) => {
+    setActiveOnlyState(v);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ACTIVE_ONLY_KEY, v ? "1" : "0");
+    }
+  };
+
   const allVars = useMemo(() => {
     const map = new Map<string, { key: string; value: string; envName: string; isActive: boolean }>();
-    for (const env of environments) {
+    const sources = activeOnly
+      ? environments.filter((e) => e.id === activeEnvId)
+      : environments;
+    for (const env of sources) {
       for (const v of env.variables) {
         if (!v.key) continue;
         // Prefer active env entry on duplicates
@@ -36,7 +58,7 @@ export function EnvVarInput({ value, onChange, className, ...rest }: Props) {
     return Array.from(map.values()).sort((a, b) =>
       a.isActive === b.isActive ? a.key.localeCompare(b.key) : a.isActive ? -1 : 1,
     );
-  }, [environments, activeEnvId]);
+  }, [environments, activeEnvId, activeOnly]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
