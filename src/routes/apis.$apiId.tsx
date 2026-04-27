@@ -96,6 +96,10 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
   const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
   const activeEnv = environments.find((e) => e.id === activeEnvironmentId);
   const envVars = activeEnv?.variables ?? [];
+  const envVarActiveOnly = useWorkspaceStore(
+    (s) => s.data[s.currentWorkspaceId]?.envVarActiveOnly?.[apiId] ?? false,
+  );
+  const setEnvVarActiveOnly = useWorkspaceStore((s) => s.setEnvVarActiveOnly);
 
   const [method, setMethod] = useState<HttpMethod>(api.method);
   const [url, setUrl] = useState(api.endpoint);
@@ -267,6 +271,8 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
             <EnvVarInput
               value={url}
               onChange={setUrl}
+              activeOnly={envVarActiveOnly}
+              onActiveOnlyChange={(v) => setEnvVarActiveOnly(apiId, v)}
               placeholder="{{baseUrl}}/users/me"
               className="w-full rounded-md bg-input border border-border px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -332,6 +338,8 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
                 onChange={setParams}
                 placeholderKey="key"
                 placeholderValue="value"
+                envVarActiveOnly={envVarActiveOnly}
+                onEnvVarActiveOnlyChange={(v) => setEnvVarActiveOnly(apiId, v)}
               />
             )}
             {activeTab === "Headers" && (
@@ -340,6 +348,8 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
                 onChange={setHeaders}
                 placeholderKey="Header"
                 placeholderValue="Value"
+                envVarActiveOnly={envVarActiveOnly}
+                onEnvVarActiveOnlyChange={(v) => setEnvVarActiveOnly(apiId, v)}
               />
             )}
             {activeTab === "Body" && (
@@ -484,11 +494,15 @@ function KeyValueList({
   onChange,
   placeholderKey,
   placeholderValue,
+  envVarActiveOnly,
+  onEnvVarActiveOnlyChange,
 }: {
   rows: KeyValueRow[];
   onChange: (next: KeyValueRow[]) => void;
   placeholderKey: string;
   placeholderValue: string;
+  envVarActiveOnly?: boolean;
+  onEnvVarActiveOnlyChange?: (next: boolean) => void;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -552,6 +566,8 @@ function KeyValueList({
               onRemove={() => remove(r.id)}
               placeholderKey={placeholderKey}
               placeholderValue={placeholderValue}
+              envVarActiveOnly={envVarActiveOnly}
+              onEnvVarActiveOnlyChange={onEnvVarActiveOnlyChange}
             />
           ))}
         </SortableContext>
@@ -574,6 +590,8 @@ function SortableRow({
   onRemove,
   placeholderKey,
   placeholderValue,
+  envVarActiveOnly,
+  onEnvVarActiveOnlyChange,
 }: {
   row: KeyValueRow;
   isDuplicate: boolean;
@@ -581,6 +599,8 @@ function SortableRow({
   onRemove: () => void;
   placeholderKey: string;
   placeholderValue: string;
+  envVarActiveOnly?: boolean;
+  onEnvVarActiveOnlyChange?: (next: boolean) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.id,
@@ -615,6 +635,8 @@ function SortableRow({
         <EnvVarInput
           value={row.value}
           onChange={(v) => onUpdate({ value: v })}
+          activeOnly={envVarActiveOnly}
+          onActiveOnlyChange={onEnvVarActiveOnlyChange}
           placeholder={placeholderValue}
           className="w-full rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
         />

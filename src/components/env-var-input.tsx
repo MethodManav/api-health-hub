@@ -6,8 +6,10 @@ import { Variable } from "lucide-react";
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
   value: string;
   onChange: (next: string) => void;
-  /** When true, only suggest variables defined in the active environment. */
+  /** When provided, controls the "active env only" mode externally (e.g. persisted per API). */
   activeOnly?: boolean;
+  /** Called when the user toggles the in-popup "active env only" checkbox. */
+  onActiveOnlyChange?: (next: boolean) => void;
 };
 
 const ACTIVE_ONLY_KEY = "envvar.activeOnly";
@@ -15,11 +17,19 @@ const ACTIVE_ONLY_KEY = "envvar.activeOnly";
 /**
  * Input that shows Postman-style env-var suggestions when the user types `{{`.
  * By default, suggestions are pulled from all environments in the workspace
- * (Postman behavior). A toggle in the popup (persisted in localStorage) lets
- * users restrict suggestions to the active environment only. Selecting one
- * inserts `{{key}}`.
+ * (Postman behavior). A toggle in the popup lets users restrict suggestions
+ * to the active environment only — controlled externally when `activeOnly`
+ * is provided, otherwise persisted in localStorage as a global default.
+ * Selecting an entry inserts `{{key}}`.
  */
-export function EnvVarInput({ value, onChange, className, activeOnly: activeOnlyProp, ...rest }: Props) {
+export function EnvVarInput({
+  value,
+  onChange,
+  className,
+  activeOnly: activeOnlyProp,
+  onActiveOnlyChange,
+  ...rest
+}: Props) {
   const environments = useWorkspaceStore((s) => s.environments);
   const activeEnvId = useWorkspaceStore((s) => s.activeEnvironmentId);
 
@@ -30,9 +40,12 @@ export function EnvVarInput({ value, onChange, className, activeOnly: activeOnly
   const activeOnly = activeOnlyProp ?? activeOnlyState;
 
   const setActiveOnly = (v: boolean) => {
-    setActiveOnlyState(v);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(ACTIVE_ONLY_KEY, v ? "1" : "0");
+    if (onActiveOnlyChange) onActiveOnlyChange(v);
+    if (activeOnlyProp === undefined) {
+      setActiveOnlyState(v);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(ACTIVE_ONLY_KEY, v ? "1" : "0");
+      }
     }
   };
 
@@ -82,6 +95,12 @@ export function EnvVarInput({ value, onChange, className, activeOnly: activeOnly
   const refresh = () => {
     const el = inputRef.current;
     if (!el) return;
+    // Only react if the input is currently focused — avoids the popup
+    // popping up when the parent re-renders with `{{...}}` defaults.
+    if (typeof document !== "undefined" && document.activeElement !== el) {
+      setOpen(false);
+      return;
+    }
     const caret = el.selectionStart ?? value.length;
     const tok = detectToken(value, caret);
     if (tok) {
@@ -123,7 +142,13 @@ export function EnvVarInput({ value, onChange, className, activeOnly: activeOnly
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open || filtered.length === 0) return;
+    if (!open) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      return;
+    }
+    if (filtered.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlight((h) => (h + 1) % filtered.length);
@@ -133,8 +158,6 @@ export function EnvVarInput({ value, onChange, className, activeOnly: activeOnly
     } else if (e.key === "Enter" || e.key === "Tab") {
       e.preventDefault();
       insert(filtered[highlight].key);
-    } else if (e.key === "Escape") {
-      setOpen(false);
     }
   };
 
@@ -158,20 +181,18 @@ export function EnvVarInput({ value, onChange, className, activeOnly: activeOnly
               <Variable className="h-3 w-3" /> Env vars
               {activeOnly && <span className="text-primary normal-case">· active only</span>}
             </span>
-            {activeOnlyProp === undefined && (
-              <label
-                className="flex items-center gap-1 normal-case tracking-normal cursor-pointer hover:text-foreground"
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                <input
-                  type="checkbox"
-                  checked={activeOnly}
-                  onChange={(e) => setActiveOnly(e.target.checked)}
-                  className="h-3 w-3 accent-primary cursor-pointer"
-                />
-                Active env only
-              </label>
-            )}
+            <label
+              className="flex items-center gap-1 normal-case tracking-normal cursor-pointer hover:text-foreground"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <input
+                type="checkbox"
+                checked={activeOnly}
+                onChange={(e) => setActiveOnly(e.target.checked)}
+                className="h-3 w-3 accent-primary cursor-pointer"
+              />
+              Active env only
+            </label>
           </div>
           {filtered.length === 0 && (
             <div className="px-2 py-3 text-[11px] font-mono text-muted-foreground text-center">

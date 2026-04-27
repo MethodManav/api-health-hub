@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import type { RunHistoryEntry } from "@/lib/mock-data";
-import { Clock, Trash2, Inbox, Filter, RotateCcw } from "lucide-react";
+import { Clock, Trash2, Inbox, Filter, RotateCcw, Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fmtTime = (ts: number) => {
@@ -89,6 +89,45 @@ export function RunHistoryPanel({ apiId }: { apiId: string }) {
     [history, filter, codeQuery],
   );
 
+  const codeInputRef = useRef<HTMLInputElement>(null);
+
+  const resetFilters = () => {
+    setCodeQuery("");
+    setFilter("all");
+    setHistoryFilter(apiId, { status: "all", codeQuery: "" });
+  };
+
+  // Keyboard shortcuts (only when not typing inside a form field):
+  //   /          → focus the status-code search
+  //   r          → reset filters
+  //   Shift+Del  → clear all history for this API
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const typing =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        (target as HTMLElement | null)?.isContentEditable;
+
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        codeInputRef.current?.focus();
+        codeInputRef.current?.select();
+      } else if ((e.key === "r" || e.key === "R") && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        resetFilters();
+      } else if (e.key === "Delete" && e.shiftKey) {
+        e.preventDefault();
+        if (history.length > 0) clear(apiId);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiId, history.length]);
+
   // Counts per filter for badges
   const counts = useMemo(() => {
     const c: Record<StatusFilter, number> = { all: history.length, success: 0, redirect: 0, client: 0, server: 0, error: 0 };
@@ -104,19 +143,24 @@ export function RunHistoryPanel({ apiId }: { apiId: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Clock className="h-3 w-3" /> Last {Math.min(history.length, 25)} runs
         </div>
         <div className="flex items-center gap-3">
+          <span
+            className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono text-muted-foreground"
+            title="Shortcuts:  /  focus search   ·   r  reset filters   ·   Shift+Del  clear history"
+          >
+            <Keyboard className="h-3 w-3" />
+            <kbd className="px-1 rounded border border-border bg-card">/</kbd>
+            <kbd className="px-1 rounded border border-border bg-card">r</kbd>
+            <kbd className="px-1 rounded border border-border bg-card">⇧⌫</kbd>
+          </span>
           {(codeQuery || filter !== "all" || savedFilter) && (
             <button
-              onClick={() => {
-                setCodeQuery("");
-                setFilter("all");
-                setHistoryFilter(apiId, { status: "all", codeQuery: "" });
-              }}
-              title="Clear saved status pill and status-code query for this API"
+              onClick={resetFilters}
+              title="Clear saved status pill and status-code query for this API (r)"
               className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
             >
               <RotateCcw className="h-3 w-3" /> Reset filters
@@ -125,6 +169,7 @@ export function RunHistoryPanel({ apiId }: { apiId: string }) {
           {history.length > 0 && (
             <button
               onClick={() => clear(apiId)}
+              title="Clear all run history for this API (Shift+Delete)"
               className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive"
             >
               <Trash2 className="h-3 w-3" /> Clear
@@ -163,9 +208,10 @@ export function RunHistoryPanel({ apiId }: { apiId: string }) {
           </div>
           <div className="flex items-center gap-2">
             <input
+              ref={codeInputRef}
               value={codeQuery}
               onChange={(e) => setCodeQuery(e.target.value)}
-              placeholder="Filter by status code (e.g. 200, 404 503)"
+              placeholder="Filter by status code (e.g. 200, 404 503) — press / to focus"
               className="flex-1 rounded bg-input border border-border px-2 py-1 text-[11px] font-mono focus:outline-none focus:ring-1 focus:ring-primary"
             />
             {(codeQuery || filter !== "all") && (
