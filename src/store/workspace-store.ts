@@ -31,6 +31,8 @@ export type WorkspaceData = {
   activeEnvironmentId: string | null;
   /** Per-API saved History tab filters. */
   historyFilters: Record<string, HistoryFilter>;
+  /** Per-API saved EnvVarInput "active env only" toggle. */
+  envVarActiveOnly: Record<string, boolean>;
 };
 
 type WorkspaceState = {
@@ -59,6 +61,7 @@ type WorkspaceState = {
   recordRun: (apiId: string, entry: Omit<RunHistoryEntry, "id" | "timestamp">) => void;
   clearHistory: (apiId: string) => void;
   setHistoryFilter: (apiId: string, filter: HistoryFilter) => void;
+  setEnvVarActiveOnly: (apiId: string, value: boolean) => void;
 
   setActiveEnvironment: (id: string | null) => void;
   addEnvironment: (name: string) => Environment;
@@ -109,6 +112,7 @@ const emptyWorkspaceData = (): WorkspaceData => {
     environments: envs,
     activeEnvironmentId: envs[0]?.id ?? null,
     historyFilters: {},
+    envVarActiveOnly: {},
   };
 };
 
@@ -250,6 +254,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           }));
           set({ ...next, ...project(next.data, get().currentWorkspaceId) });
         },
+        setEnvVarActiveOnly: (apiId, value) => {
+          const next = patchWorkspace(get(), (d) => ({
+            ...d,
+            envVarActiveOnly: { ...(d.envVarActiveOnly ?? {}), [apiId]: value },
+          }));
+          set({ ...next, ...project(next.data, get().currentWorkspaceId) });
+        },
 
         setActiveEnvironment: (id) => {
           const next = patchWorkspace(get(), (d) => ({ ...d, activeEnvironmentId: id }));
@@ -299,7 +310,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     },
     {
       name: "devpulse-workspace",
-      version: 6,
+      version: 7,
       // Persist only canonical state; rehydrate projections in onRehydrateStorage.
       partialize: (s) =>
         ({
@@ -336,6 +347,14 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           const data = { ...(persisted.data ?? {}) } as Record<string, WorkspaceData>;
           for (const k of Object.keys(data)) {
             data[k] = { ...data[k], historyFilters: data[k].historyFilters ?? {} };
+          }
+          persisted = { ...persisted, data };
+        }
+        if (version < 7) {
+          // v6 -> v7: add envVarActiveOnly map per workspace.
+          const data = { ...(persisted.data ?? {}) } as Record<string, WorkspaceData>;
+          for (const k of Object.keys(data)) {
+            data[k] = { ...data[k], envVarActiveOnly: data[k].envVarActiveOnly ?? {} };
           }
           persisted = { ...persisted, data };
         }
