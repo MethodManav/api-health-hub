@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import type { RunHistoryEntry } from "@/lib/mock-data";
 import { Clock, Trash2, Inbox, Filter } from "lucide-react";
@@ -60,9 +60,29 @@ const matchesFilter = (h: RunHistoryEntry, f: StatusFilter, codeQuery: string) =
 export function RunHistoryPanel({ apiId }: { apiId: string }) {
   const history = useWorkspaceStore((s) => s.apis.find((a) => a.id === apiId)?.history ?? []);
   const clear = useWorkspaceStore((s) => s.clearHistory);
+  const wsId = useWorkspaceStore((s) => s.currentWorkspaceId);
+  const savedFilter = useWorkspaceStore(
+    (s) => s.data[s.currentWorkspaceId]?.historyFilters?.[apiId],
+  );
+  const setHistoryFilter = useWorkspaceStore((s) => s.setHistoryFilter);
 
-  const [filter, setFilter] = useState<StatusFilter>("all");
-  const [codeQuery, setCodeQuery] = useState("");
+  const [filter, setFilter] = useState<StatusFilter>((savedFilter?.status as StatusFilter) ?? "all");
+  const [codeQuery, setCodeQuery] = useState(savedFilter?.codeQuery ?? "");
+
+  // Reload saved filter when workspace or API changes
+  useEffect(() => {
+    setFilter((savedFilter?.status as StatusFilter) ?? "all");
+    setCodeQuery(savedFilter?.codeQuery ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiId, wsId]);
+
+  // Persist filter changes (debounced for code query)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setHistoryFilter(apiId, { status: filter, codeQuery });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [apiId, filter, codeQuery, setHistoryFilter]);
 
   const filtered = useMemo(
     () => history.filter((h) => matchesFilter(h, filter, codeQuery)),

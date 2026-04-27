@@ -22,11 +22,15 @@ export type Environment = {
 };
 
 /** All data that is scoped to a single workspace. */
+export type HistoryFilter = { status: string; codeQuery: string };
+
 export type WorkspaceData = {
   folders: Folder[];
   apis: ApiEndpoint[];
   environments: Environment[];
   activeEnvironmentId: string | null;
+  /** Per-API saved History tab filters. */
+  historyFilters: Record<string, HistoryFilter>;
 };
 
 type WorkspaceState = {
@@ -54,6 +58,7 @@ type WorkspaceState = {
   deleteApi: (id: string) => void;
   recordRun: (apiId: string, entry: Omit<RunHistoryEntry, "id" | "timestamp">) => void;
   clearHistory: (apiId: string) => void;
+  setHistoryFilter: (apiId: string, filter: HistoryFilter) => void;
 
   setActiveEnvironment: (id: string | null) => void;
   addEnvironment: (name: string) => Environment;
@@ -103,6 +108,7 @@ const emptyWorkspaceData = (): WorkspaceData => {
     apis: [],
     environments: envs,
     activeEnvironmentId: envs[0]?.id ?? null,
+    historyFilters: {},
   };
 };
 
@@ -237,6 +243,13 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           }));
           set({ ...next, ...project(next.data, get().currentWorkspaceId) });
         },
+        setHistoryFilter: (apiId, filter) => {
+          const next = patchWorkspace(get(), (d) => ({
+            ...d,
+            historyFilters: { ...(d.historyFilters ?? {}), [apiId]: filter },
+          }));
+          set({ ...next, ...project(next.data, get().currentWorkspaceId) });
+        },
 
         setActiveEnvironment: (id) => {
           const next = patchWorkspace(get(), (d) => ({ ...d, activeEnvironmentId: id }));
@@ -286,7 +299,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     },
     {
       name: "devpulse-workspace",
-      version: 5,
+      version: 6,
       // Persist only canonical state; rehydrate projections in onRehydrateStorage.
       partialize: (s) =>
         ({
@@ -294,7 +307,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
           currentWorkspaceId: s.currentWorkspaceId,
           data: s.data,
         }) as unknown as WorkspaceState,
-      // Migrate older versions where folders/apis/environments lived at the top level.
+      // Migrate older versions.
       migrate: (persisted: any, version) => {
         if (!persisted) return persisted;
         if (version < 5) {
@@ -310,12 +323,21 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             activeEnvironmentId:
               persisted.activeEnvironmentId ??
               (persisted.environments?.[0]?.id ?? null),
+            historyFilters: {},
           };
-          return {
+          persisted = {
             workspaces: persisted.workspaces ?? initialWorkspaces,
             currentWorkspaceId: wsId,
             data,
           };
+        }
+        if (version < 6) {
+          // v5 -> v6: ensure each workspace has a historyFilters map.
+          const data = { ...(persisted.data ?? {}) } as Record<string, WorkspaceData>;
+          for (const k of Object.keys(data)) {
+            data[k] = { ...data[k], historyFilters: data[k].historyFilters ?? {} };
+          }
+          persisted = { ...persisted, data };
         }
         return persisted;
       },

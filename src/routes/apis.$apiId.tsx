@@ -6,6 +6,7 @@ import { MethodBadge } from "@/components/method-badge";
 import { StatusDot } from "@/components/status-dot";
 import { EnvSwitcher } from "@/components/env-switcher";
 import { JsonEditor } from "@/components/json-editor";
+import { EnvVarInput } from "@/components/env-var-input";
 import { buildCurl } from "@/lib/curl";
 import { RunHistoryPanel } from "@/components/run-history-panel";
 import {
@@ -263,9 +264,9 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
             {METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
           <div className="relative flex-1">
-            <input
+            <EnvVarInput
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={setUrl}
               placeholder="{{baseUrl}}/users/me"
               className="w-full rounded-md bg-input border border-border px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
             />
@@ -610,12 +611,14 @@ function SortableRow({
           isDuplicate ? "border-warning/60" : "border-border",
         )}
       />
-      <input
-        value={row.value}
-        onChange={(e) => onUpdate({ value: e.target.value })}
-        placeholder={placeholderValue}
-        className="flex-[2] rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-      />
+      <div className="flex-[2]">
+        <EnvVarInput
+          value={row.value}
+          onChange={(v) => onUpdate({ value: v })}
+          placeholder={placeholderValue}
+          className="w-full rounded-md bg-input border border-border px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
       <button
         onClick={onRemove}
         className="text-muted-foreground hover:text-destructive p-1.5"
