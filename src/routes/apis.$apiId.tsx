@@ -6,6 +6,7 @@ import { MethodBadge } from "@/components/method-badge";
 import { StatusDot } from "@/components/status-dot";
 import { EnvSwitcher } from "@/components/env-switcher";
 import { JsonEditor } from "@/components/json-editor";
+import { EnvVarInput } from "@/components/env-var-input";
 import { buildCurl } from "@/lib/curl";
 import { RunHistoryPanel } from "@/components/run-history-panel";
 import {
@@ -263,9 +264,9 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
             {METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
           <div className="relative flex-1">
-            <input
+            <EnvVarInput
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={setUrl}
               placeholder="{{baseUrl}}/users/me"
               className="w-full rounded-md bg-input border border-border px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
             />
