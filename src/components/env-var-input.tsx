@@ -142,7 +142,13 @@ export function EnvVarInput({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open || filtered.length === 0) return;
+    if (!open) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+      return;
+    }
+    if (filtered.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlight((h) => (h + 1) % filtered.length);
@@ -152,8 +158,6 @@ export function EnvVarInput({
     } else if (e.key === "Enter" || e.key === "Tab") {
       e.preventDefault();
       insert(filtered[highlight].key);
-    } else if (e.key === "Escape") {
-      setOpen(false);
     }
   };
 
@@ -177,20 +181,18 @@ export function EnvVarInput({
               <Variable className="h-3 w-3" /> Env vars
               {activeOnly && <span className="text-primary normal-case">· active only</span>}
             </span>
-            {activeOnlyProp === undefined && (
-              <label
-                className="flex items-center gap-1 normal-case tracking-normal cursor-pointer hover:text-foreground"
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                <input
-                  type="checkbox"
-                  checked={activeOnly}
-                  onChange={(e) => setActiveOnly(e.target.checked)}
-                  className="h-3 w-3 accent-primary cursor-pointer"
-                />
-                Active env only
-              </label>
-            )}
+            <label
+              className="flex items-center gap-1 normal-case tracking-normal cursor-pointer hover:text-foreground"
+              onMouseDown={(e) => e.preventDefault()}
+            >
+              <input
+                type="checkbox"
+                checked={activeOnly}
+                onChange={(e) => setActiveOnly(e.target.checked)}
+                className="h-3 w-3 accent-primary cursor-pointer"
+              />
+              Active env only
+            </label>
           </div>
           {filtered.length === 0 && (
             <div className="px-2 py-3 text-[11px] font-mono text-muted-foreground text-center">
