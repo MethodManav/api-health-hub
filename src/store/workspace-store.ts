@@ -335,6 +335,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
               persisted.activeEnvironmentId ??
               (persisted.environments?.[0]?.id ?? null),
             historyFilters: {},
+            envVarActiveOnly: {},
           };
           persisted = {
             workspaces: persisted.workspaces ?? initialWorkspaces,
