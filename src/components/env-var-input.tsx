@@ -40,9 +40,12 @@ export function EnvVarInput({
   const activeOnly = activeOnlyProp ?? activeOnlyState;
 
   const setActiveOnly = (v: boolean) => {
-    setActiveOnlyState(v);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(ACTIVE_ONLY_KEY, v ? "1" : "0");
+    if (onActiveOnlyChange) onActiveOnlyChange(v);
+    if (activeOnlyProp === undefined) {
+      setActiveOnlyState(v);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(ACTIVE_ONLY_KEY, v ? "1" : "0");
+      }
     }
   };
 
@@ -92,6 +95,12 @@ export function EnvVarInput({
   const refresh = () => {
     const el = inputRef.current;
     if (!el) return;
+    // Only react if the input is currently focused — avoids the popup
+    // popping up when the parent re-renders with `{{...}}` defaults.
+    if (typeof document !== "undefined" && document.activeElement !== el) {
+      setOpen(false);
+      return;
+    }
     const caret = el.selectionStart ?? value.length;
     const tok = detectToken(value, caret);
     if (tok) {
