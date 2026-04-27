@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import type { RunHistoryEntry } from "@/lib/mock-data";
-import { Clock, Trash2, Inbox, Filter } from "lucide-react";
+import { Clock, Trash2, Inbox, Filter, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fmtTime = (ts: number) => {
@@ -108,14 +108,29 @@ export function RunHistoryPanel({ apiId }: { apiId: string }) {
         <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Clock className="h-3 w-3" /> Last {Math.min(history.length, 25)} runs
         </div>
-        {history.length > 0 && (
-          <button
-            onClick={() => clear(apiId)}
-            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-3 w-3" /> Clear
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {(codeQuery || filter !== "all" || savedFilter) && (
+            <button
+              onClick={() => {
+                setCodeQuery("");
+                setFilter("all");
+                setHistoryFilter(apiId, { status: "all", codeQuery: "" });
+              }}
+              title="Clear saved status pill and status-code query for this API"
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw className="h-3 w-3" /> Reset filters
+            </button>
+          )}
+          {history.length > 0 && (
+            <button
+              onClick={() => clear(apiId)}
+              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-3 w-3" /> Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {history.length > 0 && (
