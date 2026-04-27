@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import type { RunHistoryEntry } from "@/lib/mock-data";
-import { Clock, Trash2, Inbox, Filter, RotateCcw } from "lucide-react";
+import { Clock, Trash2, Inbox, Filter, RotateCcw, Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const fmtTime = (ts: number) => {
@@ -88,6 +88,45 @@ export function RunHistoryPanel({ apiId }: { apiId: string }) {
     () => history.filter((h) => matchesFilter(h, filter, codeQuery)),
     [history, filter, codeQuery],
   );
+
+  const codeInputRef = useRef<HTMLInputElement>(null);
+
+  const resetFilters = () => {
+    setCodeQuery("");
+    setFilter("all");
+    setHistoryFilter(apiId, { status: "all", codeQuery: "" });
+  };
+
+  // Keyboard shortcuts (only when not typing inside a form field):
+  //   /          → focus the status-code search
+  //   r          → reset filters
+  //   Shift+Del  → clear all history for this API
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const typing =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        (target as HTMLElement | null)?.isContentEditable;
+
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        codeInputRef.current?.focus();
+        codeInputRef.current?.select();
+      } else if ((e.key === "r" || e.key === "R") && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        resetFilters();
+      } else if (e.key === "Delete" && e.shiftKey) {
+        e.preventDefault();
+        if (history.length > 0) clear(apiId);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiId, history.length]);
 
   // Counts per filter for badges
   const counts = useMemo(() => {
