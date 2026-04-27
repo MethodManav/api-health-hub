@@ -96,6 +96,10 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
   const activeEnvironmentId = useWorkspaceStore((s) => s.activeEnvironmentId);
   const activeEnv = environments.find((e) => e.id === activeEnvironmentId);
   const envVars = activeEnv?.variables ?? [];
+  const envVarActiveOnly = useWorkspaceStore(
+    (s) => s.data[s.currentWorkspaceId]?.envVarActiveOnly?.[apiId] ?? false,
+  );
+  const setEnvVarActiveOnly = useWorkspaceStore((s) => s.setEnvVarActiveOnly);
 
   const [method, setMethod] = useState<HttpMethod>(api.method);
   const [url, setUrl] = useState(api.endpoint);
@@ -267,6 +271,8 @@ function ApiEditorInner({ apiId }: { apiId: string }) {
             <EnvVarInput
               value={url}
               onChange={setUrl}
+              activeOnly={envVarActiveOnly}
+              onActiveOnlyChange={(v) => setEnvVarActiveOnly(apiId, v)}
               placeholder="{{baseUrl}}/users/me"
               className="w-full rounded-md bg-input border border-border px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
             />
