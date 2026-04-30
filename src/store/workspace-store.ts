@@ -42,7 +42,9 @@ type WorkspaceState = {
   data: Record<string, WorkspaceData>;
 
   setWorkspace: (id: string) => void;
-  addWorkspace: (name: string, color?: string) => void;
+  addWorkspace: (name: string, color?: string) => Workspace;
+  renameWorkspace: (id: string, name: string) => void;
+  deleteWorkspace: (id: string) => void;
 
   // Computed views over the active workspace (read-only convenience accessors).
   // These are kept in sync via selectors below.
