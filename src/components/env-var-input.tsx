@@ -51,20 +51,25 @@ export function EnvVarInput({
   };
 
   const allVars = useMemo(() => {
-    const map = new Map<string, { key: string; value: string; envName: string; isActive: boolean }>();
+    const map = new Map<
+      string,
+      { key: string; value: string; rawValue: string; envId: string; envName: string; isActive: boolean; secret: boolean }
+    >();
     const sources = activeOnly
       ? environments.filter((e) => e.id === activeEnvId)
       : environments;
     for (const env of sources) {
       for (const v of env.variables) {
         if (!v.key) continue;
-        // Prefer active env entry on duplicates
         if (!map.has(v.key) || env.id === activeEnvId) {
           map.set(v.key, {
             key: v.key,
             value: v.secret ? "••••••" : v.value,
+            rawValue: v.value,
+            envId: env.id,
             envName: env.name,
             isActive: env.id === activeEnvId,
+            secret: !!v.secret,
           });
         }
       }
