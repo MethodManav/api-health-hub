@@ -42,7 +42,9 @@ type WorkspaceState = {
   data: Record<string, WorkspaceData>;
 
   setWorkspace: (id: string) => void;
-  addWorkspace: (name: string, color?: string) => void;
+  addWorkspace: (name: string, color?: string) => Workspace;
+  renameWorkspace: (id: string, name: string) => void;
+  deleteWorkspace: (id: string) => void;
 
   // Computed views over the active workspace (read-only convenience accessors).
   // These are kept in sync via selectors below.
@@ -176,6 +178,26 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             currentWorkspaceId: id,
             data,
             ...project(data, id),
+          });
+          return ws;
+        },
+        renameWorkspace: (id, name) => {
+          set({
+            workspaces: get().workspaces.map((w) => (w.id === id ? { ...w, name } : w)),
+          });
+        },
+        deleteWorkspace: (id) => {
+          const remaining = get().workspaces.filter((w) => w.id !== id);
+          if (remaining.length === 0) return; // never delete the last workspace
+          const data = { ...get().data };
+          delete data[id];
+          const nextCurrent = get().currentWorkspaceId === id ? remaining[0].id : get().currentWorkspaceId;
+          if (!data[nextCurrent]) data[nextCurrent] = emptyWorkspaceData();
+          set({
+            workspaces: remaining,
+            data,
+            currentWorkspaceId: nextCurrent,
+            ...project(data, nextCurrent),
           });
         },
 

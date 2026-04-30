@@ -179,3 +179,82 @@ export function ConfirmModal({
     </Modal>
   );
 }
+
+const WS_COLORS = [
+  "oklch(0.65 0.22 280)",
+  "oklch(0.74 0.18 155)",
+  "oklch(0.78 0.16 75)",
+  "oklch(0.7 0.18 300)",
+  "oklch(0.7 0.15 240)",
+  "oklch(0.82 0.18 175)",
+  "oklch(0.65 0.22 25)",
+];
+
+export function WorkspaceModal({
+  open,
+  onClose,
+  workspaceId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  workspaceId?: string | null;
+}) {
+  const { workspaces, addWorkspace, renameWorkspace } = useWorkspaceStore();
+  const editing = workspaceId ? workspaces.find((w) => w.id === workspaceId) : null;
+  const [name, setName] = useState(editing?.name ?? "");
+  const [color, setColor] = useState(editing?.color ?? WS_COLORS[0]);
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    if (editing) renameWorkspace(editing.id, name.trim());
+    else addWorkspace(name.trim(), color);
+    setName("");
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={editing ? "Rename Workspace" : "New Workspace"}>
+      <form onSubmit={submit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+            Workspace name
+          </label>
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Production"
+            className="w-full rounded-md bg-input border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        {!editing && (
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+              Color
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {WS_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  className={`h-7 w-7 rounded-full border-2 transition ${color === c ? "border-foreground scale-110" : "border-transparent"}`}
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent">
+            Cancel
+          </button>
+          <button type="submit" className="rounded-md bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow">
+            {editing ? "Save" : "Create"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
