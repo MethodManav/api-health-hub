@@ -32,6 +32,7 @@ export function EnvVarInput({
 }: Props) {
   const environments = useWorkspaceStore((s) => s.environments);
   const activeEnvId = useWorkspaceStore((s) => s.activeEnvironmentId);
+  const setEnvironmentVariables = useWorkspaceStore((s) => s.setEnvironmentVariables);
 
   const [activeOnlyState, setActiveOnlyState] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
