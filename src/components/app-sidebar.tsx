@@ -293,13 +293,26 @@ export function AppSidebar() {
         apiId={apiModal.id}
         onClose={() => setApiModal({ open: false })}
       />
+      <WorkspaceModal
+        open={wsModal.open}
+        workspaceId={wsModal.id}
+        onClose={() => setWsModal({ open: false })}
+      />
       <ConfirmModal
         open={confirm.open}
-        title={confirm.type === "folder" ? "Delete folder?" : "Delete endpoint?"}
+        title={
+          confirm.type === "folder"
+            ? "Delete folder?"
+            : confirm.type === "workspace"
+              ? "Delete workspace?"
+              : "Delete endpoint?"
+        }
         message={
           confirm.type === "folder"
             ? `"${confirm.name}" will be removed. Endpoints inside it will become uncategorized.`
-            : `"${confirm.name}" will be permanently deleted.`
+            : confirm.type === "workspace"
+              ? `"${confirm.name}" and all its APIs, environments, and history will be permanently deleted.`
+              : `"${confirm.name}" will be permanently deleted.`
         }
         onClose={() => setConfirm({ open: false })}
         onConfirm={() => {
@@ -307,6 +320,10 @@ export function AppSidebar() {
           if (confirm.type === "api" && confirm.id) {
             deleteApi(confirm.id);
             if (pathname === `/apis/${confirm.id}`) navigate({ to: "/apis" });
+          }
+          if (confirm.type === "workspace" && confirm.id) {
+            deleteWorkspace(confirm.id);
+            navigate({ to: "/apis" });
           }
         }}
       />
