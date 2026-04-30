@@ -214,8 +214,10 @@ export function EnvVarInput({
     }
   };
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={wrapperRef}>
       <input
         ref={inputRef}
         value={value}
@@ -223,7 +225,14 @@ export function EnvVarInput({
         onKeyDown={onKeyDown}
         onKeyUp={refresh}
         onClick={refresh}
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onBlur={() =>
+          setTimeout(() => {
+            const active = typeof document !== "undefined" ? document.activeElement : null;
+            if (wrapperRef.current && active && wrapperRef.current.contains(active)) return;
+            setOpen(false);
+            setEditKey(null);
+          }, 120)
+        }
         className={className}
         {...rest}
       />
