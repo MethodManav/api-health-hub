@@ -179,6 +179,26 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             data,
             ...project(data, id),
           });
+          return ws;
+        },
+        renameWorkspace: (id, name) => {
+          set({
+            workspaces: get().workspaces.map((w) => (w.id === id ? { ...w, name } : w)),
+          });
+        },
+        deleteWorkspace: (id) => {
+          const remaining = get().workspaces.filter((w) => w.id !== id);
+          if (remaining.length === 0) return; // never delete the last workspace
+          const data = { ...get().data };
+          delete data[id];
+          const nextCurrent = get().currentWorkspaceId === id ? remaining[0].id : get().currentWorkspaceId;
+          if (!data[nextCurrent]) data[nextCurrent] = emptyWorkspaceData();
+          set({
+            workspaces: remaining,
+            data,
+            currentWorkspaceId: nextCurrent,
+            ...project(data, nextCurrent),
+          });
         },
 
         addFolder: (name, parentId = null) => {
