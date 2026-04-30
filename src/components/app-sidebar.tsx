@@ -78,16 +78,45 @@ export function AppSidebar() {
           </button>
           {wsOpen && (
             <div className="absolute left-3 right-3 top-full mt-1 z-20 rounded-md border border-sidebar-border bg-popover shadow-card overflow-hidden">
-              {workspaces.map((ws) => (
-                <button
-                  key={ws.id}
-                  onClick={() => { setWorkspace(ws.id); setWsOpen(false); }}
-                  className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent text-left"
-                >
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: ws.color }} />
-                  {ws.name}
-                </button>
-              ))}
+              <div className="max-h-64 overflow-y-auto">
+                {workspaces.map((ws) => {
+                  const isCurrent = ws.id === currentWorkspaceId;
+                  return (
+                    <div key={ws.id} className="group flex items-center hover:bg-accent">
+                      <button
+                        onClick={() => { setWorkspace(ws.id); setWsOpen(false); }}
+                        className="flex flex-1 items-center gap-2 px-3 py-2 text-sm text-left min-w-0"
+                      >
+                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: ws.color }} />
+                        <span className="truncate">{ws.name}</span>
+                        {isCurrent && <Check className="h-3.5 w-3.5 text-primary ml-auto shrink-0" />}
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setWsModal({ open: true, id: ws.id }); setWsOpen(false); }}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-foreground"
+                        title="Rename"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      {workspaces.length > 1 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirm({ open: true, type: "workspace", id: ws.id, name: ws.name }); setWsOpen(false); }}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 mr-1 text-muted-foreground hover:text-destructive"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => { setWsModal({ open: true }); setWsOpen(false); }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm border-t border-border text-primary hover:bg-accent text-left"
+              >
+                <Plus className="h-3.5 w-3.5" /> New workspace
+              </button>
             </div>
           )}
         </div>
