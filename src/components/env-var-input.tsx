@@ -176,13 +176,31 @@ export function EnvVarInput({
     });
   };
 
+  const editVar = editKey ? allVars.find((v) => v.key === editKey) : null;
+
+  const saveEdit = () => {
+    if (!editVar) return;
+    const env = environments.find((e) => e.id === editVar.envId);
+    if (!env) return;
+    const nextVars = env.variables.map((v) =>
+      v.key === editVar.key ? { ...v, value: editDraft } : v,
+    );
+    setEnvironmentVariables(env.id, nextVars);
+    setOpen(false);
+    setEditKey(null);
+    inputRef.current?.focus();
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open) return;
     if (e.key === "Escape") {
       e.preventDefault();
       setOpen(false);
+      setEditKey(null);
       return;
     }
+    // In edit mode the popup is informational; let normal typing continue.
+    if (editKey) return;
     if (filtered.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
