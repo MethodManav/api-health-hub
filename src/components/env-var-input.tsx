@@ -237,10 +237,8 @@ export function EnvVarInput({
         {...rest}
       />
       {open && editKey && (
-        <div
-          className="absolute left-0 right-0 z-50 mt-1 rounded-md border border-border bg-popover shadow-lg"
-          onMouseDown={(e) => e.preventDefault()}
-        >
+        <div className="absolute left-0 right-0 z-50 mt-1 rounded-md border border-border bg-popover shadow-lg">
+
           <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border flex items-center justify-between gap-2">
             <span className="flex items-center gap-1">
               <Variable className="h-3 w-3" />
