@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import { cn } from "@/lib/utils";
-import { Variable } from "lucide-react";
+import { Variable, Eye, EyeOff, Check as CheckIcon } from "lucide-react";
 
 type Props = Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
   value: string;
@@ -32,6 +32,7 @@ export function EnvVarInput({
 }: Props) {
   const environments = useWorkspaceStore((s) => s.environments);
   const activeEnvId = useWorkspaceStore((s) => s.activeEnvironmentId);
+  const setEnvironmentVariables = useWorkspaceStore((s) => s.setEnvironmentVariables);
 
   const [activeOnlyState, setActiveOnlyState] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -50,20 +51,25 @@ export function EnvVarInput({
   };
 
   const allVars = useMemo(() => {
-    const map = new Map<string, { key: string; value: string; envName: string; isActive: boolean }>();
+    const map = new Map<
+      string,
+      { key: string; value: string; rawValue: string; envId: string; envName: string; isActive: boolean; secret: boolean }
+    >();
     const sources = activeOnly
       ? environments.filter((e) => e.id === activeEnvId)
       : environments;
     for (const env of sources) {
       for (const v of env.variables) {
         if (!v.key) continue;
-        // Prefer active env entry on duplicates
         if (!map.has(v.key) || env.id === activeEnvId) {
           map.set(v.key, {
             key: v.key,
             value: v.secret ? "••••••" : v.value,
+            rawValue: v.value,
+            envId: env.id,
             envName: env.name,
             isActive: env.id === activeEnvId,
+            secret: !!v.secret,
           });
         }
       }
@@ -78,38 +84,67 @@ export function EnvVarInput({
   const [highlight, setHighlight] = useState(0);
   const [query, setQuery] = useState("");
   const [tokenStart, setTokenStart] = useState<number | null>(null);
+  /** When the caret is inside a closed `{{key}}` token, switch to edit mode. */
+  const [editKey, setEditKey] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<string>("");
+  const [revealSecret, setRevealSecret] = useState(false);
 
-  // Detect if caret is currently inside an unclosed `{{...` token.
-  const detectToken = (val: string, caret: number) => {
+  // Detect either an open suggestion token (`{{par|`) or a closed reference
+  // token (`{{key|}}` or `{{|key}}`) the caret is currently inside.
+  const detectToken = (
+    val: string,
+    caret: number,
+  ):
+    | { mode: "suggest"; start: number; query: string }
+    | { mode: "edit"; start: number; end: number; key: string }
+    | null => {
+    // 1) Closed token containing caret? Scan all `{{...}}` matches.
+    const re = /\{\{\s*([\w-]+)\s*\}\}/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(val))) {
+      const start = m.index;
+      const end = m.index + m[0].length;
+      if (caret >= start && caret <= end) {
+        return { mode: "edit", start, end, key: m[1] };
+      }
+    }
+    // 2) Otherwise, an unclosed `{{...` before the caret → suggestion mode.
     const before = val.slice(0, caret);
     const open = before.lastIndexOf("{{");
     if (open === -1) return null;
-    // Make sure no closing `}}` between open and caret
     const afterOpen = before.slice(open + 2);
     if (afterOpen.includes("}}")) return null;
-    // Token chars only (\w-)
     if (!/^[\w-]*$/.test(afterOpen)) return null;
-    return { start: open, query: afterOpen };
+    return { mode: "suggest", start: open, query: afterOpen };
   };
 
   const refresh = () => {
     const el = inputRef.current;
     if (!el) return;
-    // Only react if the input is currently focused — avoids the popup
-    // popping up when the parent re-renders with `{{...}}` defaults.
     if (typeof document !== "undefined" && document.activeElement !== el) {
       setOpen(false);
       return;
     }
     const caret = el.selectionStart ?? value.length;
     const tok = detectToken(value, caret);
-    if (tok) {
+    if (!tok) {
+      setOpen(false);
+      setTokenStart(null);
+      setEditKey(null);
+      return;
+    }
+    if (tok.mode === "suggest") {
       setOpen(true);
       setQuery(tok.query);
       setTokenStart(tok.start);
       setHighlight(0);
+      setEditKey(null);
     } else {
-      setOpen(false);
+      const found = allVars.find((v) => v.key === tok.key);
+      setOpen(true);
+      setEditKey(tok.key);
+      setEditDraft(found?.rawValue ?? "");
+      setRevealSecret(false);
       setTokenStart(null);
     }
   };
@@ -141,13 +176,31 @@ export function EnvVarInput({
     });
   };
 
+  const editVar = editKey ? allVars.find((v) => v.key === editKey) : null;
+
+  const saveEdit = () => {
+    if (!editVar) return;
+    const env = environments.find((e) => e.id === editVar.envId);
+    if (!env) return;
+    const nextVars = env.variables.map((v) =>
+      v.key === editVar.key ? { ...v, value: editDraft } : v,
+    );
+    setEnvironmentVariables(env.id, nextVars);
+    setOpen(false);
+    setEditKey(null);
+    inputRef.current?.focus();
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open) return;
     if (e.key === "Escape") {
       e.preventDefault();
       setOpen(false);
+      setEditKey(null);
       return;
     }
+    // In edit mode the popup is informational; let normal typing continue.
+    if (editKey) return;
     if (filtered.length === 0) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -161,8 +214,10 @@ export function EnvVarInput({
     }
   };
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" ref={wrapperRef}>
       <input
         ref={inputRef}
         value={value}
@@ -170,11 +225,88 @@ export function EnvVarInput({
         onKeyDown={onKeyDown}
         onKeyUp={refresh}
         onClick={refresh}
-        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        onBlur={() =>
+          setTimeout(() => {
+            const active = typeof document !== "undefined" ? document.activeElement : null;
+            if (wrapperRef.current && active && wrapperRef.current.contains(active)) return;
+            setOpen(false);
+            setEditKey(null);
+          }, 120)
+        }
         className={className}
         {...rest}
       />
-      {open && (
+      {open && editKey && (
+        <div className="absolute left-0 right-0 z-50 mt-1 rounded-md border border-border bg-popover shadow-lg">
+
+          <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1">
+              <Variable className="h-3 w-3" />
+              <span className="text-primary normal-case">{`{{${editKey}}}`}</span>
+              {editVar && (
+                <span className="text-[9px] normal-case">
+                  · {editVar.envName}
+                  {editVar.isActive && <span className="text-primary"> · active</span>}
+                </span>
+              )}
+            </span>
+            {editVar?.secret && (
+              <button
+                type="button"
+                onClick={() => setRevealSecret((r) => !r)}
+                className="flex items-center gap-1 normal-case tracking-normal hover:text-foreground"
+                title={revealSecret ? "Hide value" : "Reveal value"}
+              >
+                {revealSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                {revealSecret ? "Hide" : "Reveal"}
+              </button>
+            )}
+          </div>
+          {!editVar ? (
+            <div className="px-2 py-3 text-[11px] font-mono text-muted-foreground text-center">
+              <span className="text-warning">Unresolved</span> — no variable named{" "}
+              <span className="text-primary">{editKey}</span>
+              {activeOnly ? " in the active environment." : "."}
+            </div>
+          ) : (
+            <div className="p-2 space-y-2">
+              <input
+                type={editVar.secret && !revealSecret ? "password" : "text"}
+                value={editDraft}
+                onChange={(e) => setEditDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveEdit();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    setOpen(false);
+                    setEditKey(null);
+                    inputRef.current?.focus();
+                  }
+                }}
+                className="w-full rounded bg-input border border-border px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder="value"
+                autoFocus
+              />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-muted-foreground">
+                  Updates <span className="text-foreground">{editVar.envName}</span> environment.
+                </span>
+                <button
+                  type="button"
+                  onClick={saveEdit}
+                  disabled={editDraft === editVar.rawValue}
+                  className="inline-flex items-center gap-1 rounded bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
+                >
+                  <CheckIcon className="h-3 w-3" /> Save
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {open && !editKey && (
         <div className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-lg">
           <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border flex items-center justify-between gap-2">
             <span className="flex items-center gap-1">
