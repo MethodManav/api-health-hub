@@ -9,12 +9,13 @@ import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
   const navigate = useNavigate();
-  const { workspaces, currentWorkspaceId, setWorkspace, folders, apis, deleteFolder, deleteApi } = useWorkspaceStore();
+  const { workspaces, currentWorkspaceId, setWorkspace, folders, apis, deleteFolder, deleteApi, deleteWorkspace } = useWorkspaceStore();
   const [wsOpen, setWsOpen] = useState(false);
+  const [wsModal, setWsModal] = useState<{ open: boolean; id?: string | null }>({ open: false });
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [folderModal, setFolderModal] = useState<{ open: boolean; id?: string | null }>({ open: false });
   const [apiModal, setApiModal] = useState<{ open: boolean; folderId?: string | null; id?: string | null }>({ open: false });
-  const [confirm, setConfirm] = useState<{ open: boolean; type?: "folder" | "api"; id?: string; name?: string }>({ open: false });
+  const [confirm, setConfirm] = useState<{ open: boolean; type?: "folder" | "api" | "workspace"; id?: string; name?: string }>({ open: false });
   const [menu, setMenu] = useState<{ kind: "folder" | "api"; id: string } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
