@@ -84,38 +84,67 @@ export function EnvVarInput({
   const [highlight, setHighlight] = useState(0);
   const [query, setQuery] = useState("");
   const [tokenStart, setTokenStart] = useState<number | null>(null);
+  /** When the caret is inside a closed `{{key}}` token, switch to edit mode. */
+  const [editKey, setEditKey] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<string>("");
+  const [revealSecret, setRevealSecret] = useState(false);
 
-  // Detect if caret is currently inside an unclosed `{{...` token.
-  const detectToken = (val: string, caret: number) => {
+  // Detect either an open suggestion token (`{{par|`) or a closed reference
+  // token (`{{key|}}` or `{{|key}}`) the caret is currently inside.
+  const detectToken = (
+    val: string,
+    caret: number,
+  ):
+    | { mode: "suggest"; start: number; query: string }
+    | { mode: "edit"; start: number; end: number; key: string }
+    | null => {
+    // 1) Closed token containing caret? Scan all `{{...}}` matches.
+    const re = /\{\{\s*([\w-]+)\s*\}\}/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(val))) {
+      const start = m.index;
+      const end = m.index + m[0].length;
+      if (caret >= start && caret <= end) {
+        return { mode: "edit", start, end, key: m[1] };
+      }
+    }
+    // 2) Otherwise, an unclosed `{{...` before the caret → suggestion mode.
     const before = val.slice(0, caret);
     const open = before.lastIndexOf("{{");
     if (open === -1) return null;
-    // Make sure no closing `}}` between open and caret
     const afterOpen = before.slice(open + 2);
     if (afterOpen.includes("}}")) return null;
-    // Token chars only (\w-)
     if (!/^[\w-]*$/.test(afterOpen)) return null;
-    return { start: open, query: afterOpen };
+    return { mode: "suggest", start: open, query: afterOpen };
   };
 
   const refresh = () => {
     const el = inputRef.current;
     if (!el) return;
-    // Only react if the input is currently focused — avoids the popup
-    // popping up when the parent re-renders with `{{...}}` defaults.
     if (typeof document !== "undefined" && document.activeElement !== el) {
       setOpen(false);
       return;
     }
     const caret = el.selectionStart ?? value.length;
     const tok = detectToken(value, caret);
-    if (tok) {
+    if (!tok) {
+      setOpen(false);
+      setTokenStart(null);
+      setEditKey(null);
+      return;
+    }
+    if (tok.mode === "suggest") {
       setOpen(true);
       setQuery(tok.query);
       setTokenStart(tok.start);
       setHighlight(0);
+      setEditKey(null);
     } else {
-      setOpen(false);
+      const found = allVars.find((v) => v.key === tok.key);
+      setOpen(true);
+      setEditKey(tok.key);
+      setEditDraft(found?.rawValue ?? "");
+      setRevealSecret(false);
       setTokenStart(null);
     }
   };
