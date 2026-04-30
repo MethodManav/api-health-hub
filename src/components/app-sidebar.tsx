@@ -1,10 +1,10 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { Activity, FolderTree, FlaskConical, Settings, ChevronDown, Plus, MoreVertical, Pencil, Trash2, FolderPlus, Globe } from "lucide-react";
+import { Activity, FolderTree, FlaskConical, Settings, ChevronDown, Plus, MoreVertical, Pencil, Trash2, FolderPlus, Globe, Check } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useWorkspaceStore } from "@/store/workspace-store";
 import { MethodBadge } from "./method-badge";
 import { StatusDot } from "./status-dot";
-import { FolderModal, ApiModal, ConfirmModal } from "./crud-modals";
+import { FolderModal, ApiModal, ConfirmModal, WorkspaceModal } from "./crud-modals";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
