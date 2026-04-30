@@ -227,7 +227,79 @@ export function EnvVarInput({
         className={className}
         {...rest}
       />
-      {open && (
+      {open && editKey && (
+        <div
+          className="absolute left-0 right-0 z-50 mt-1 rounded-md border border-border bg-popover shadow-lg"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1">
+              <Variable className="h-3 w-3" />
+              <span className="text-primary normal-case">{`{{${editKey}}}`}</span>
+              {editVar && (
+                <span className="text-[9px] normal-case">
+                  · {editVar.envName}
+                  {editVar.isActive && <span className="text-primary"> · active</span>}
+                </span>
+              )}
+            </span>
+            {editVar?.secret && (
+              <button
+                type="button"
+                onClick={() => setRevealSecret((r) => !r)}
+                className="flex items-center gap-1 normal-case tracking-normal hover:text-foreground"
+                title={revealSecret ? "Hide value" : "Reveal value"}
+              >
+                {revealSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                {revealSecret ? "Hide" : "Reveal"}
+              </button>
+            )}
+          </div>
+          {!editVar ? (
+            <div className="px-2 py-3 text-[11px] font-mono text-muted-foreground text-center">
+              <span className="text-warning">Unresolved</span> — no variable named{" "}
+              <span className="text-primary">{editKey}</span>
+              {activeOnly ? " in the active environment." : "."}
+            </div>
+          ) : (
+            <div className="p-2 space-y-2">
+              <input
+                type={editVar.secret && !revealSecret ? "password" : "text"}
+                value={editDraft}
+                onChange={(e) => setEditDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveEdit();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    setOpen(false);
+                    setEditKey(null);
+                    inputRef.current?.focus();
+                  }
+                }}
+                className="w-full rounded bg-input border border-border px-2 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                placeholder="value"
+                autoFocus
+              />
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-muted-foreground">
+                  Updates <span className="text-foreground">{editVar.envName}</span> environment.
+                </span>
+                <button
+                  type="button"
+                  onClick={saveEdit}
+                  disabled={editDraft === editVar.rawValue}
+                  className="inline-flex items-center gap-1 rounded bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
+                >
+                  <CheckIcon className="h-3 w-3" /> Save
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {open && !editKey && (
         <div className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-auto rounded-md border border-border bg-popover shadow-lg">
           <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground border-b border-border flex items-center justify-between gap-2">
             <span className="flex items-center gap-1">
